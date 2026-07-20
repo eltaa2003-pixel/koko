@@ -1,20 +1,36 @@
+import 'dotenv/config';
+import ffmpeg from 'ffmpeg-static';
+process.env.FFMPEG_PATH = ffmpeg;
+
 import makeWASocket, {
-  useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
   DisconnectReason
 } from 'baileys';
 import qrcode from 'qrcode-terminal';
+import express from 'express';
 
-import { PREFIX, AUTH_FOLDER, DEFAULT_COOLDOWN } from './config.js';
+import { PREFIX, DEFAULT_COOLDOWN } from './config.js';
 import logger from './lib/logger.js';
 import store from './lib/store.js';
 import { loadPlugins } from './lib/loadPlugins.js';
 import { checkCooldown } from './lib/cooldown.js';
 import { getMessageText } from './lib/messageText.js';
+import { useMongoAuthState } from './lib/mongoAuth.js';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Bot is running smoothly!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Keep-alive server listening on port ${PORT}`);
+});
 
 async function start() {
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+  const { state, saveCreds } = await useMongoAuthState(process.env.MONGO_URL);
   const { version } = await fetchLatestBaileysVersion();
   const { commands, count } = await loadPlugins(logger);
 
@@ -53,7 +69,7 @@ async function start() {
       if (shouldReconnect) {
         start();
       } else {
-        console.log(`logged out — delete the ${AUTH_FOLDER}/ folder and restart to re-link`);
+        console.log(`logged out — restart to re-link`);
       }
     } else if (connection === 'open') {
       console.log('connected');
