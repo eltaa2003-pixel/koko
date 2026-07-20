@@ -113,8 +113,13 @@ function saveDiskCache() {
 // ------------------------------------------------------------
 async function fetchFromGithub() {
   const listUrl = `https://data.jsdelivr.com/v1/package/gh/${GITHUB_OWNER}/${GITHUB_REPO}@${GITHUB_BRANCH}`;
+  
+  const res = await fetch(listUrl, {
+    headers: {
+      'User-Agent': 'WhatsApp-Bot-Client'
+    }
+  });
 
-  const res = await fetch(listUrl);
   if (!res.ok) {
     throw new Error(`jsDelivr metadata fetch failed: ${res.status} ${res.statusText}`);
   }
