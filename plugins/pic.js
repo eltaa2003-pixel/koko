@@ -382,6 +382,9 @@ export default {
     }
 
     // ---- START COMMAND (مص) ----
+    ctx.store.namespace('katGame').delete(ctx.chatId);
+    ctx.store.namespace('ta3Game').delete(ctx.chatId);
+
     const list = await getImageList();
     if (!list.length) {
       await ctx.reply('خطأ: لم يتم العثور على صور في مصدر GitHub.');

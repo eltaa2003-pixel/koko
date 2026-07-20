@@ -199,6 +199,9 @@ export default {
     }
 
     // 2. أمر بدء الفعالية (.متع)
+    ctx.store.namespace('katGame').delete(ctx.chatId);
+    ctx.store.namespace('picGame').delete(ctx.chatId);
+
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');
       return;
