@@ -111,22 +111,32 @@ function saveDiskCache() {
 // endpoint after pushing:
 //   https://purge.jsdelivr.net/gh/OWNER/REPO@BRANCH/PATH
 // ------------------------------------------------------------
-const GITHUB_API = 'https://api.github.com';
-
 async function fetchFromGithub() {
-  const listUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_PATH}`;
+  const listUrl = `https://data.jsdelivr.com/v1/package/gh/${GITHUB_OWNER}/${GITHUB_REPO}@${GITHUB_BRANCH}`;
+
   const res = await fetch(listUrl);
   if (!res.ok) {
-    throw new Error(`GitHub file list fetch failed: ${res.status} ${res.statusText}`);
+    throw new Error(`jsDelivr metadata fetch failed: ${res.status} ${res.statusText}`);
   }
-  const items = await res.json();
+  const data = await res.json();
 
-  const files = Array.isArray(items)
-    ? items.filter(entry => IMAGE_EXT_RE.test(entry.name))
-    : [];
+  const findFilesRecursive = (node, currentPath = '') => {
+    let files = [];
+    if (!node.files) return files;
+    for (const f of node.files) {
+      const fullPath = currentPath ? `${currentPath}/${f.name}` : f.name;
+      if (f.type === 'file' && IMAGE_EXT_RE.test(f.name) && fullPath.startsWith(GITHUB_PATH)) {
+        files.push(f.name);
+      } else if (f.type === 'directory') {
+        files = files.concat(findFilesRecursive(f, fullPath));
+      }
+    }
+    return files;
+  };
 
-  return files.map(entry => {
-    const filename = entry.name;
+  const filenames = findFilesRecursive(data);
+
+  return filenames.map(filename => {
     const rawUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_OWNER}/${GITHUB_REPO}@${GITHUB_BRANCH}/${GITHUB_PATH}/${encodeURIComponent(filename)}`;
     const answer = filenameToAnswer(filename);
     return {
