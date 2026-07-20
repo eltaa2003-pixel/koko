@@ -4,8 +4,6 @@ import path from 'node:path';
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 const PIC_CACHE_PATH = path.resolve('plugins/.pic-game-cache.json');
 
-// --- Helper Functions (Replicated from game files to keep this standalone) ---
-
 function normalizeText(text) {
   if (!text) return '';
   return text
@@ -37,12 +35,12 @@ function getRandomItems(pool, count) {
   return result;
 }
 
-function buildRemaining(normalizedWords) {
-  const remaining = new Map();
-  for (const w of normalizedWords) {
-    remaining.set(w, (remaining.get(w) || 0) + 1);
+function buildAnswersMap(answersArray) {
+  const map = new Map();
+  for (const ans of answersArray) {
+    map.set(normalizeText(ans), true);
   }
-  return remaining;
+  return map;
 }
 
 function loadKatData() {
@@ -65,14 +63,6 @@ function loadTa3Data() {
     console.error('Skip Plugin - Error loading ta3 data:', e);
     return [];
   }
-}
-
-function buildAnswersMap(answersArray) {
-  const map = new Map();
-  for (const ans of answersArray) {
-    map.set(normalizeText(ans), true);
-  }
-  return map;
 }
 
 const KAT_POOL = loadKatData();
@@ -103,9 +93,9 @@ export default {
       const nextNormalized = nextWords.map(normalizeText);
 
       katState.targetWords = nextWords;
+      katState.targetNormalized = nextNormalized;
       katState.targetTotal = nextNormalized.length;
-      katState.remaining = buildRemaining(nextNormalized);
-      katState.matchedCount = 0;
+      katState.players = {}; // Wipes the new individual player checklists clean
       katState.startTime = Date.now();
 
       await sock.sendMessage(chatId, {
@@ -137,7 +127,7 @@ export default {
 
       let list = [];
       try {
-        const raw = fs.readFileSync(path.join(__dirname, '.pic-game-cache.json'), 'utf-8');
+        const raw = fs.readFileSync(PIC_CACHE_PATH, 'utf-8');
         const saved = JSON.parse(raw);
         if (Array.isArray(saved.list)) list = saved.list;
       } catch (e) {
