@@ -123,6 +123,9 @@ async function processMessage(ctx, chatId, state, m) {
 
   // إذا وصل مجموع الأسماء الفرعية الصحيحة المجمعة بواسطة هذا اللاعب إلى 3
   if (playerFoundSet.size >= 3) {
+    if (state.isTransitioning) return;
+    state.isTransitioning = true;
+
     const timeTaken = ((Date.now() - state.startTime) / 1000).toFixed(3);
     const winnerMention = `@${senderJid.split('@')[0]}`;
 
@@ -134,13 +137,14 @@ async function processMessage(ctx, chatId, state, m) {
     if (!nextQ) {
       store.delete(chatId);
       ctx.sock.sendMessage(chatId, { text: 'خطأ: لم يتم العثور على أسئلة في فئة تع.' }).catch(() => {});
+      state.isTransitioning = false;
       return;
     }
 
     // تحديث بيانات الجولة القادمة وتصفير تقدم اللاعبين المؤقت فوراً
     state.currentQuestion = nextQ.question;
     state.answersMap = buildAnswersMap(nextQ.answers);
-    state.playerProgress = {}; // مسح التجميع المؤقت لتبدأ جولة جديدة تماماً ونظيفة للكل
+    state.playerProgress = {};
     state.startTime = Date.now();
 
     // صياغة نص الإرسال المطلوب: تع/3 + النقطة + التايم + السؤال الجديد
@@ -154,8 +158,12 @@ async function processMessage(ctx, chatId, state, m) {
       },
       { quoted: m }
     ).then(() => {
-      state.startTime = Date.now(); // إعادة ضبط دقيقة لعداد الوقت بعد الإرسال المباشر
-    }).catch(err => console.error('تع game send error:', err));
+      state.startTime = Date.now();
+      state.isTransitioning = false;
+    }).catch(err => {
+      console.error('تع game send error:', err);
+      state.isTransitioning = false;
+    });
   }
   // إذا كانت المدخلات ناقصة أو بها أخطاء، يسجل البوت الكلمات الصحيحة فقط وينتظر الباقي بصمت تام دون قفل المحاولة
 }
@@ -214,10 +222,11 @@ export default {
     const state = {
       currentQuestion: firstQ.question,
       answersMap: buildAnswersMap(firstQ.answers),
-      playerProgress: {}, // تتبع مستمر لكل لاعب على حدة لمنع التداخل
+      playerProgress: {},
       startTime: Date.now(),
       scores: {}, 
-      queue: Promise.resolve() 
+      queue: Promise.resolve(),
+      isTransitioning: false
     };
 
     store.set(ctx.chatId, state);
