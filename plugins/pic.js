@@ -39,7 +39,7 @@ function filenameToAnswer(filename) {
 
 let cachedImageList = null;
 
-function getLocalImageList() {
+export function getLocalImageList() {
   if (cachedImageList) return cachedImageList;
 
   try {
@@ -73,7 +73,7 @@ function getLocalImageList() {
   }
 }
 
-function pickRandom(list, count, exclude) {
+export function pickRandom(list, count, exclude) {
   const pool = exclude ? list.filter(item => item.name !== exclude.name) : list.slice();
   const m = pool.length;
   if (!m) return [];
@@ -149,7 +149,7 @@ async function processMessage(ctx, chatId, state, m) {
   const list = getLocalImageList();
   const [nextItem] = pickRandom(list, 1, state.currentItem);
   if (!nextItem) {
-    await ctx.sock.sendMessage(chatId, { text: '⚠️ لا توجد صور متاحة في مجلد saved_images.' }).catch(() => {});
+    await ctx.sock.sendMessage(chatId, { text: 'لا توجد صور متاحة في مجلد saved_images.' }).catch(() => {});
     return;
   }
   
@@ -228,7 +228,7 @@ export default {
       const lines = leaderboard.map(([jid, pts], i) => `${i + 1}. @${jid.split('@')[0]} - ${pts}`);
       const mentions = leaderboard.map(([jid]) => jid);
       await ctx.sock.sendMessage(ctx.chatId, {
-        text: `تم إيقاف اللعبة 🏁\n\nالنتائج النهائية:\n${lines.join('\n')}`,
+        text: `تم إيقاف اللعبة\n\nالنتائج النهائية:\n${lines.join('\n')}`,
         mentions
       });
       return;
@@ -236,6 +236,7 @@ export default {
 
     ctx.store.namespace('katGame').delete(ctx.chatId);
     ctx.store.namespace('ta3Game').delete(ctx.chatId);
+    ctx.store.namespace('ssGame').delete(ctx.chatId);
 
     const [firstItem] = pickRandom(list, 1);
     const state = {

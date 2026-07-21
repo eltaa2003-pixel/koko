@@ -11,7 +11,8 @@ export default {
     const games = [
       { id: 'katGame', name: 'كت/تفكيك' },
       { id: 'ta3Game', name: 'تع/3' },
-      { id: 'picGame', name: 'الصور' }
+      { id: 'picGame', name: 'الصور' },
+      { id: 'ssGame', name: 'س/سس' }
     ];
 
     for (const game of games) {
@@ -22,7 +23,7 @@ export default {
         stoppedAny = true;
 
         const leaderboard = Object.entries(state.scores || {}).sort((a, b) => b[1] - a[1]);
-        let resultText = `تم إيقاف فعالية *${game.name}* 🏁\n`;
+        let resultText = `تم إيقاف فعالية *${game.name}*\n`;
 
         if (leaderboard.length === 0) {
           resultText += '\nلم يسجل أحد أي نقطة.';

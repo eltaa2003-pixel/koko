@@ -1,4 +1,6 @@
 import { getRandomQuestion, buildAnswersMap } from './ta3.js';
+import { getLocalImageList, pickRandom } from './pic.js';
+import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers } from './ss.js';
 
 export default {
   name: 'سكب',
@@ -20,7 +22,7 @@ export default {
 
       if (!nextQ) {
         ta3Store.delete(chatId);
-        await ctx.reply(`⏩ *تم التخطي*\n\nالإجابة الصحيحة كانت:\n✨ ${answersList} ✨\n\nخطأ: لم يتم العثور على أسئلة جديدة.`);
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}\n\nخطأ: لم يتم العثور على أسئلة جديدة.`);
         state.isTransitioning = false;
         return;
       }
@@ -31,7 +33,8 @@ export default {
       state.playerProgress = {};
       state.startTime = Date.now();
 
-      await ctx.reply(`⏩ *تم التخطي*\n\nالإجابة الصحيحة كانت:\n✨ ${answersList} ✨\n\n*تع/3 ${nextQ.question}*`);
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
+      await ctx.reply(`*تع/3 ${nextQ.question}*`);
 
       state.isTransitioning = false;
       return;
@@ -44,7 +47,7 @@ export default {
 
       state.playerProgress = {};
       
-      await ctx.reply(`⏩ *تم التخطي*\n\nالإجابة الصحيحة كانت:\n✨ *${correctAnswers}* ✨`);
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*`);
       
       if (typeof state.nextRound === 'function') {
         await state.nextRound();
@@ -52,6 +55,65 @@ export default {
       return;
     }
 
-    await ctx.reply('لا توجد لعبة نشطة حالياً لتخطيها! 🏁');
+    const picStore = ctx.store.namespace('picGame');
+    if (picStore.has(chatId)) {
+      const state = picStore.get(chatId);
+      const correctAnswer = state.currentItem?.answer || '';
+
+      const list = getLocalImageList();
+      const [nextItem] = pickRandom(list, 1, state.currentItem);
+
+      if (!nextItem) {
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${correctAnswer}\n\nلا توجد صور أخرى متاحة.`);
+        return;
+      }
+
+      state.currentItem = nextItem;
+      state.answerNormalized = nextItem.answerNormalized;
+
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${correctAnswer}`);
+
+      try {
+        await ctx.sock.sendMessage(chatId, {
+          image: { url: nextItem.path },
+          jpegThumbnail: null
+        });
+        state.startTime = Date.now();
+      } catch (err) {
+        console.error('صورة game skip send error:', err);
+      }
+      return;
+    }
+
+    const ssStore = ctx.store.namespace('ssGame');
+    if (ssStore.has(chatId)) {
+      const state = ssStore.get(chatId);
+      if (state.isTransitioning) return;
+      state.isTransitioning = true;
+
+      const answersList = getSSDisplayAnswers(state.answersRaw);
+      const nextQ = getRandomSSQuestion();
+
+      if (!nextQ) {
+        ssStore.delete(chatId);
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}\n\nخطأ: لم يتم العثور على أسئلة جديدة.`);
+        state.isTransitioning = false;
+        return;
+      }
+
+      state.currentQuestion = nextQ.question;
+      state.answersRaw = nextQ.answers;
+      state.answerData = buildSSAnswerData(nextQ.answers);
+      state.playerProgress = {};
+      state.startTime = Date.now();
+
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
+      await ctx.reply(`*س/ ${nextQ.question}*`);
+
+      state.isTransitioning = false;
+      return;
+    }
+
+    await ctx.reply('لا توجد لعبة نشطة حالياً لتخطيها!');
   }
 };

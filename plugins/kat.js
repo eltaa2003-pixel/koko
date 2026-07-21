@@ -152,7 +152,7 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (nextWords.length < state.targetCount) {
     ctx.sock.sendMessage(chatId, {
-      text: `⚠️ يوجد فقط ${nextWords.length} كلمة متاحة في هذه الفئة (تم طلب ${state.targetCount}).`
+      text: `يوجد فقط ${nextWords.length} كلمة متاحة في هذه الفئة (تم طلب ${state.targetCount}).`
     }).catch(() => {});
   }
 
@@ -203,7 +203,7 @@ export default {
       const mentions = leaderboard.map(([jid]) => jid);
 
       await ctx.sock.sendMessage(ctx.chatId, {
-        text: `تم إيقاف اللعبة 🏁\n\nالنتائج النهائية:\n${lines.join('\n')}`,
+        text: `تم إيقاف اللعبة\n\nالنتائج النهائية:\n${lines.join('\n')}`,
         mentions
       });
       return;
@@ -211,6 +211,7 @@ export default {
 
     ctx.store.namespace('ta3Game').delete(ctx.chatId);
     ctx.store.namespace('picGame').delete(ctx.chatId);
+    ctx.store.namespace('ssGame').delete(ctx.chatId);
 
     let count = 1;
     const match = commandUsed.match(/^مكت(\d+)$/);
@@ -232,7 +233,7 @@ export default {
     const targetNormalized = targetWords.map(normalizeText);
 
     if (targetWords.length < count) {
-      await ctx.reply(`⚠️ يوجد فقط ${targetWords.length} كلمة متاحة في هذه الفئة (تم طلب ${count}).`);
+      await ctx.reply(`يوجد فقط ${targetWords.length} كلمة متاحة في هذه الفئة (تم طلب ${count}).`);
     }
 
     const state = {

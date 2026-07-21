@@ -201,7 +201,7 @@ export default {
       const mentions = leaderboard.map(([jid]) => jid);
 
       await ctx.sock.sendMessage(ctx.chatId, {
-        text: `تم إيقاف الفعالية 🏁\n\nالنتائج النهائية:\n${lines.join('\n')}`,
+        text: `تم إيقاف الفعالية\n\nالنتائج النهائية:\n${lines.join('\n')}`,
         mentions
       });
       return;
@@ -210,6 +210,7 @@ export default {
     // 2. أمر بدء الفعالية (.متع)
     ctx.store.namespace('katGame').delete(ctx.chatId);
     ctx.store.namespace('picGame').delete(ctx.chatId);
+    ctx.store.namespace('ssGame').delete(ctx.chatId);
 
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');
