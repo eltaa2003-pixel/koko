@@ -4,6 +4,13 @@ import path from 'node:path';
 const IMAGES_DIR = path.resolve('saved_images');
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
 
+// --- MEMORY LOGGER ---
+function logMemory(step) {
+  const mem = process.memoryUsage();
+  const format = (bytes) => (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  console.log(`[Memory - ${step}] RSS: ${format(mem.rss)} | Heap Total: ${format(mem.heapTotal)} | Heap Used: ${format(mem.heapUsed)}`);
+}
+
 function normalizeText(text) {
   if (!text) return '';
   return text
@@ -30,7 +37,6 @@ function filenameToAnswer(filename) {
     .trim();
 }
 
-// Reads the local directory
 function getLocalImageList() {
   try {
     if (!fs.existsSync(IMAGES_DIR)) {
@@ -139,16 +145,18 @@ async function processMessage(ctx, chatId, state, m) {
   state.answerNormalized = nextItem.answerNormalized;
 
   try {
-    // Streaming directly from disk! Zero memory spikes.
+    logMemory(`Round Won - Before sending next image: ${nextItem.name}`);
     await ctx.sock.sendMessage(
       chatId,
       {
         image: { url: nextItem.path },
         caption: `+1 ${winnerMention} (${timeTaken}s)`,
-        mentions: [winnerJid]
+        mentions: [winnerJid],
+        jpegThumbnail: null // Force Baileys to skip thumbnail generation
       },
       { quoted: m }
     );
+    logMemory(`Round Won - After sending next image`);
     state.startTime = Date.now();
   } catch (err) {
     console.error('صورة game send error:', err);
@@ -165,6 +173,8 @@ export default {
     const commandUsed = ctx.command.toLowerCase();
     const store = ctx.store.namespace('picGame');
 
+    logMemory(`Command Executed: ${commandUsed}`);
+
     const list = getLocalImageList();
     if (!list.length) {
       await ctx.reply('خطأ: مجلد saved_images فارغ أو غير موجود.');
@@ -174,8 +184,12 @@ export default {
     if (commandUsed === 'ص') {
       const [item] = pickRandom(list, 1);
       try {
-        // Streaming directly from disk
-        await ctx.sock.sendMessage(ctx.chatId, { image: { url: item.path } });
+        logMemory(`[ص] Before sending random image: ${item.name}`);
+        await ctx.sock.sendMessage(ctx.chatId, { 
+          image: { url: item.path },
+          jpegThumbnail: null // Skip processing
+        });
+        logMemory(`[ص] After sending random image`);
       } catch (err) {
         console.error('random pic send error:', err);
         await ctx.reply('صار خطأ بجلب الصورة، تأكد من وجود ملفات في المجلد.');
@@ -223,8 +237,12 @@ export default {
     store.set(ctx.chatId, state);
 
     try {
-      // Streaming directly from disk
-      await ctx.sock.sendMessage(ctx.chatId, { image: { url: firstItem.path } });
+      logMemory(`[مص] Before sending FIRST image: ${firstItem.name}`);
+      await ctx.sock.sendMessage(ctx.chatId, { 
+        image: { url: firstItem.path },
+        jpegThumbnail: null // Skip processing
+      });
+      logMemory(`[مص] After sending FIRST image`);
       state.startTime = Date.now();
     } catch (err) {
       console.error('start pic game error:', err);
