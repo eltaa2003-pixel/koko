@@ -30,7 +30,7 @@ function filenameToAnswer(filename) {
     .trim();
 }
 
-// Reads the local saved_images directory synchronously on startup/refresh
+// Reads the local directory
 function getLocalImageList() {
   try {
     if (!fs.existsSync(IMAGES_DIR)) {
@@ -53,11 +53,6 @@ function getLocalImageList() {
     console.error('Error reading local saved_images directory:', err);
     return [];
   }
-}
-
-// Read buffer directly from local disk instead of downloading over network
-async function getImageBuffer(item) {
-  return fs.promises.readFile(item.path);
 }
 
 function pickRandom(list, count, exclude) {
@@ -144,11 +139,11 @@ async function processMessage(ctx, chatId, state, m) {
   state.answerNormalized = nextItem.answerNormalized;
 
   try {
-    const buf = await getImageBuffer(nextItem);
+    // Streaming directly from disk! Zero memory spikes.
     await ctx.sock.sendMessage(
       chatId,
       {
-        image: buf,
+        image: { url: nextItem.path },
         caption: `+1 ${winnerMention} (${timeTaken}s)`,
         mentions: [winnerJid]
       },
@@ -179,8 +174,8 @@ export default {
     if (commandUsed === 'ص') {
       const [item] = pickRandom(list, 1);
       try {
-        const buf = await getImageBuffer(item);
-        await ctx.sock.sendMessage(ctx.chatId, { image: buf });
+        // Streaming directly from disk
+        await ctx.sock.sendMessage(ctx.chatId, { image: { url: item.path } });
       } catch (err) {
         console.error('random pic send error:', err);
         await ctx.reply('صار خطأ بجلب الصورة، تأكد من وجود ملفات في المجلد.');
@@ -228,8 +223,8 @@ export default {
     store.set(ctx.chatId, state);
 
     try {
-      const buf = await getImageBuffer(firstItem);
-      await ctx.sock.sendMessage(ctx.chatId, { image: buf });
+      // Streaming directly from disk
+      await ctx.sock.sendMessage(ctx.chatId, { image: { url: firstItem.path } });
       state.startTime = Date.now();
     } catch (err) {
       console.error('start pic game error:', err);
