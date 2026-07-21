@@ -37,24 +37,36 @@ function filenameToAnswer(filename) {
     .trim();
 }
 
+let cachedImageList = null;
+
 function getLocalImageList() {
+  if (cachedImageList) return cachedImageList;
+
   try {
     if (!fs.existsSync(IMAGES_DIR)) {
       fs.mkdirSync(IMAGES_DIR, { recursive: true });
       return [];
     }
     const files = fs.readdirSync(IMAGES_DIR).filter(file => IMAGE_EXT_RE.test(file));
-    
-    return files.map(filename => {
+
+    cachedImageList = files.map(filename => {
       const fullPath = path.join(IMAGES_DIR, filename);
       const answer = filenameToAnswer(filename);
+      const ext = path.extname(filename).toLowerCase();
+      let mime = 'image/jpeg';
+      if (ext === '.png') mime = 'image/png';
+      if (ext === '.webp') mime = 'image/webp';
+
       return {
         name: filename,
         path: fullPath,
         answer,
-        answerNormalized: normalizeText(answer)
+        answerNormalized: normalizeText(answer),
+        mimeType: mime
       };
     });
+
+    return cachedImageList;
   } catch (err) {
     console.error('Error reading local saved_images directory:', err);
     return [];
