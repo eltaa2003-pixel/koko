@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
-const PIC_CACHE_PATH = path.resolve('plugins/.pic-game-cache.json');
+const IMAGES_DIR = path.resolve('saved_images');
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
 
 function normalizeText(text) {
   if (!text) return '';
@@ -18,6 +19,7 @@ function normalizeText(text) {
     .replace(/[یے]/g, 'ي')
     .replace(/ک/g, 'ك')
     .replace(/ہ/g, 'ه')
+    .replace(/[جقغ]/g, 'ق')
     .replace(/\s+/g, ' ');
 }
 
@@ -65,6 +67,39 @@ function loadTa3Data() {
   }
 }
 
+// Read the local images folder just like pic.js does!
+function getLocalImageList() {
+  try {
+    if (!fs.existsSync(IMAGES_DIR)) return [];
+    const files = fs.readdirSync(IMAGES_DIR).filter(file => IMAGE_EXT_RE.test(file));
+    
+    return files.map(filename => {
+      const fullPath = path.join(IMAGES_DIR, filename);
+      const answer = filename
+        .replace(IMAGE_EXT_RE, '')
+        .replace(/\s*\(\d+\)\s*$/, '')
+        .replace(/[-_]\d+$/, '')
+        .trim();
+      
+      const ext = path.extname(filename).toLowerCase();
+      let mime = 'image/jpeg';
+      if (ext === '.png') mime = 'image/png';
+      if (ext === '.webp') mime = 'image/webp';
+
+      return {
+        name: filename,
+        path: fullPath,
+        answer,
+        answerNormalized: normalizeText(answer),
+        mimeType: mime
+      };
+    });
+  } catch (err) {
+    console.error('Error reading local saved_images for skip:', err);
+    return [];
+  }
+}
+
 const KAT_POOL = loadKatData();
 const TA3_POOL = loadTa3Data();
 
@@ -95,7 +130,7 @@ export default {
       katState.targetWords = nextWords;
       katState.targetNormalized = nextNormalized;
       katState.targetTotal = nextNormalized.length;
-      katState.players = {}; // Wipes the new individual player checklists clean
+      katState.players = {}; 
       katState.startTime = Date.now();
 
       await sock.sendMessage(chatId, {
@@ -125,36 +160,30 @@ export default {
     if (picState) {
       const oldAnswer = picState.currentItem.answer;
 
-      let list = [];
-      try {
-        const raw = fs.readFileSync(PIC_CACHE_PATH, 'utf-8');
-        const saved = JSON.parse(raw);
-        if (Array.isArray(saved.list)) list = saved.list;
-      } catch (e) {
-        console.error('Skip Plugin - Error loading pic cache:', e);
-      }
-
+      const list = getLocalImageList();
       if (!list.length) {
-        return reply('عذراً، لا يمكن جلب الصور حالياً للتخطي (الذاكرة المؤقتة فارغة).');
+        return reply('عذراً، لا يمكن جلب الصور حالياً للتخطي (مجلد الصور فارغ).');
       }
 
-      const poolList = list.filter(item => item.url !== picState.currentItem.url);
+      const poolList = list.filter(item => item.name !== picState.currentItem.name);
       const nextItem = poolList[Math.floor(Math.random() * poolList.length)];
       if (!nextItem) return reply('لا توجد صور أخرى للتخطي.');
 
       picState.currentItem = nextItem;
       picState.answerNormalized = nextItem.answerNormalized;
 
-      await sock.sendMessage(chatId, { text: `تم التخطي ⏩\nالإجابة كانت: *${oldAnswer}*` });
+      await sock.sendMessage(chatId, { text: `\nالإجابة كانت: *${oldAnswer}*` });
 
       try {
-        const res = await fetch(nextItem.url);
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-        const buf = Buffer.from(await res.arrayBuffer());
-        await sock.sendMessage(chatId, { image: buf });
+        // Safe disk-streaming method for Render!
+        await sock.sendMessage(chatId, { 
+          image: { url: nextItem.path },
+          mimetype: nextItem.mimeType,
+          jpegThumbnail: null
+        });
         picState.startTime = Date.now();
       } catch (err) {
-        console.error('Skip Plugin - Pic fetch error:', err);
+        console.error('Skip Plugin - Pic send error:', err);
         await sock.sendMessage(chatId, { text: 'حدث خطأ أثناء جلب الصورة التالية. أوقف اللعبة بـ .سص وابدأ من جديد.' });
       }
       return;
