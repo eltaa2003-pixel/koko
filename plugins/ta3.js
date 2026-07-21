@@ -36,14 +36,14 @@ function normalizeText(text) {
 }
 
 // اختيار سؤال عشوائي من فئة الـ تع
-function getRandomQuestion() {
+export function getRandomQuestion() {
   if (!TA3_POOL.length) return null;
   const randomIndex = Math.floor(Math.random() * TA3_POOL.length);
   return TA3_POOL[randomIndex];
 }
 
 // بناء خريطة الأجوبة المتاحة للسؤال الحالي لمنع التكرار
-function buildAnswersMap(answersArray) {
+export function buildAnswersMap(answersArray) {
   const map = new Map();
   for (const ans of answersArray) {
     map.set(normalizeText(ans), true);
@@ -144,11 +144,12 @@ async function processMessage(ctx, chatId, state, m) {
     // تحديث بيانات الجولة القادمة وتصفير تقدم اللاعبين المؤقت فوراً
     state.currentQuestion = nextQ.question;
     state.answersMap = buildAnswersMap(nextQ.answers);
+    state.answers = nextQ.answers;
     state.playerProgress = {};
     state.startTime = Date.now();
 
     // صياغة نص الإرسال المطلوب: تع/3 + النقطة + التايم + السؤال الجديد
-    const replyText = `*تع/3 ${state.currentQuestion}*\n\n+1 ${winnerMention} (${timeTaken}s)\n\n*تع/3 ${nextQ.question}*`;
+    const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*تع/3 ${nextQ.question}*`;
 
     ctx.sock.sendMessage(
       chatId,
@@ -222,6 +223,7 @@ export default {
     const state = {
       currentQuestion: firstQ.question,
       answersMap: buildAnswersMap(firstQ.answers),
+      answers: firstQ.answers,
       playerProgress: {},
       startTime: Date.now(),
       scores: {}, 

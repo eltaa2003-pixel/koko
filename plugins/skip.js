@@ -1,3 +1,5 @@
+import { getRandomQuestion, buildAnswersMap } from './ta3.js';
+
 export default {
   name: 'سكب',
   aliases: ['skip', 'تخطي'],
@@ -10,35 +12,27 @@ export default {
     const ta3Store = ctx.store.namespace('ta3Game');
     if (ta3Store.has(chatId)) {
       const state = ta3Store.get(chatId);
-
       if (state.isTransitioning) return;
       state.isTransitioning = true;
 
-      const answersList = Array.isArray(state.targetWords) 
-        ? state.targetWords.join(' ، ') 
-        : (state.currentAnswer || state.answer || '');
+      const answersList = (state.answers || []).join(' ، ');
+      const nextQ = getRandomQuestion();
 
-      const currentCategory = state.category || state.prompt || '';
-
-      let nextQuestionText = '';
-      if (typeof state.generateNextQuestion === 'function') {
-        const next = state.generateNextQuestion(chatId);
-        nextQuestionText = next ? next.promptText : '';
+      if (!nextQ) {
+        ta3Store.delete(chatId);
+        await ctx.reply(`⏩ *تم التخطي*\n\nالإجابة الصحيحة كانت:\n✨ ${answersList} ✨\n\nخطأ: لم يتم العثور على أسئلة جديدة.`);
+        state.isTransitioning = false;
+        return;
       }
 
-      let message = `⏩ *تم التخطي*\n\n`;
-      if (currentCategory) {
-        message += `بعض الإجابات الصحيحة لـ (*${currentCategory}*) كانت:\n✨ ${answersList} ✨\n\n`;
-      } else {
-        message += `الإجابة الصحيحة كانت:\n✨ ${answersList} ✨\n\n`;
-      }
+      state.currentQuestion = nextQ.question;
+      state.answersMap = buildAnswersMap(nextQ.answers);
+      state.answers = nextQ.answers;
+      state.playerProgress = {};
+      state.startTime = Date.now();
 
-      if (nextQuestionText) {
-        message += `-------------------\n${nextQuestionText}`;
-      }
+      await ctx.reply(`⏩ *تم التخطي*\n\nالإجابة الصحيحة كانت:\n✨ ${answersList} ✨\n\n*تع/3 ${nextQ.question}*`);
 
-      await ctx.reply(message);
-      
       state.isTransitioning = false;
       return;
     }
