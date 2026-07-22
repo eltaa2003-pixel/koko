@@ -51,7 +51,8 @@ export function getLocalImageList() {
 
     cachedImageList = files.map(filename => {
       const fullPath = path.join(IMAGES_DIR, filename);
-      const answer = filenameToAnswer(filename);
+      const rawAnswer = filenameToAnswer(filename);
+      const variants = rawAnswer.split('|').map(s => s.trim()).filter(Boolean);
       const ext = path.extname(filename).toLowerCase();
       let mime = 'image/jpeg';
       if (ext === '.png') mime = 'image/png';
@@ -60,8 +61,8 @@ export function getLocalImageList() {
       return {
         name: filename,
         path: fullPath,
-        answer,
-        answerNormalized: normalizeText(answer),
+        answer: variants[0],
+        answerVariants: variants.map(v => normalizeText(v)),
         mimeType: mime
       };
     });
@@ -127,17 +128,24 @@ async function processMessage(ctx, chatId, state, m) {
   const incomingWords = normalizeText(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
   if (!incomingWords.length) return;
 
-  const answerWords = state.answerNormalized.split(' ').filter(Boolean);
-  const winLen = answerWords.length;
-  if (!winLen) return;
+  const answerWords = state.answerVariants;
+  const winLens = answerWords.map(v => v.split(' ').filter(Boolean).length).filter(len => len > 0);
+  if (!winLens.length) return;
 
   let hit = false;
-  for (let i = 0; i + winLen <= incomingWords.length; i++) {
-    let ok = true;
-    for (let k = 0; k < winLen; k++) {
-      if (incomingWords[i + k] !== answerWords[k]) { ok = false; break; }
+  for (const variant of state.answerVariants) {
+    const answerWords = variant.split(' ').filter(Boolean);
+    const winLen = answerWords.length;
+    if (!winLen) continue;
+
+    for (let i = 0; i + winLen <= incomingWords.length; i++) {
+      let ok = true;
+      for (let k = 0; k < winLen; k++) {
+        if (incomingWords[i + k] !== answerWords[k]) { ok = false; break; }
+      }
+      if (ok) { hit = true; break; }
     }
-    if (ok) { hit = true; break; }
+    if (hit) break;
   }
   if (!hit) return;
 
@@ -154,7 +162,7 @@ async function processMessage(ctx, chatId, state, m) {
   }
   
   state.currentItem = nextItem;
-  state.answerNormalized = nextItem.answerNormalized;
+  state.answerVariants = nextItem.answerVariants;
 
   try {
     logMemory(`Round Won - Before sending next image: ${nextItem.name}`);
@@ -241,7 +249,7 @@ export default {
     const [firstItem] = pickRandom(list, 1);
     const state = {
       currentItem: firstItem,
-      answerNormalized: firstItem.answerNormalized,
+      answerVariants: firstItem.answerVariants,
       startTime: Date.now(), 
       scores: {},
       queue: Promise.resolve()
