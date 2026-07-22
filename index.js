@@ -2,6 +2,8 @@ import 'dotenv/config';
 import ffmpeg from 'ffmpeg-static';
 process.env.FFMPEG_PATH = ffmpeg;
 
+process.env.LOG_LEVEL = 'warn';
+
 import makeWASocket, {
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
@@ -10,13 +12,14 @@ import makeWASocket, {
 import qrcode from 'qrcode-terminal';
 import express from 'express';
 
-import { PREFIX, DEFAULT_COOLDOWN } from './config.js';
-import logger from './lib/logger.js';
+import coreLogger, { createSilentLogger } from './lib/logger.js';
 import store from './lib/store.js';
 import { loadPlugins } from './lib/loadPlugins.js';
 import { checkCooldown } from './lib/cooldown.js';
 import { getMessageText } from './lib/messageText.js';
 import { useMongoAuthState } from './lib/mongoAuth.js';
+
+import { PREFIX, DEFAULT_COOLDOWN } from './config.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,20 +35,19 @@ app.listen(PORT, () => {
 async function start() {
   const { state, saveCreds } = await useMongoAuthState(process.env.MONGO_URL);
   const { version } = await fetchLatestBaileysVersion();
-  const { commands, count } = await loadPlugins(logger);
+  const { commands, count } = await loadPlugins(coreLogger);
 
   console.log(`${count} plugin(s) loaded`);
 
+  const baileysLogger = createSilentLogger();
+
   const sock = makeWASocket({
     version,
-    logger,
+    logger: baileysLogger,
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger)
+      keys: makeCacheableSignalKeyStore(state.keys, coreLogger)
     },
-    // The two flags below are the biggest lever on startup weight: Baileys
-    // defaults to pulling your entire chat history and marking you online
-    // the moment it connects. A command bot needs neither.
     syncFullHistory: false,
     markOnlineOnConnect: false
   });
@@ -81,7 +83,7 @@ async function start() {
 
     for (const msg of messages) {
       handleMessage(sock, msg, commands).catch(err => {
-        logger.error({ err }, 'unhandled error in message handler');
+        coreLogger.error({ err }, 'unhandled error in message handler');
       });
     }
   });
@@ -128,13 +130,13 @@ async function handleMessage(sock, msg, commands) {
   try {
     await plugin.execute(ctx);
   } catch (err) {
-    logger.error({ err, plugin: plugin.name }, 'plugin threw');
+    coreLogger.error({ err, plugin: plugin.name }, 'plugin threw');
     await reply(`"${plugin.name}" hit an error — check the logs`).catch(() => {});
   }
 }
 
 process.on('unhandledRejection', (err) => {
-  logger.error({ err }, 'unhandled rejection');
+  coreLogger.error({ err }, 'unhandled rejection');
 });
 
 start().catch(err => {

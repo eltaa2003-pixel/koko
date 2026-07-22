@@ -90,7 +90,7 @@ function ensureGlobalListener(ctx) {
   });
 }
 
-function pushHistory(ctx, chatId, questionSnapshot) {
+export function pushHistory(ctx, chatId, questionSnapshot) {
   const historyStore = ctx.store.namespace('ssHistory');
   const history = historyStore.get(chatId) || [];
   history.push(questionSnapshot);

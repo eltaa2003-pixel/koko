@@ -1,6 +1,6 @@
-import { getRandomQuestion, buildAnswersMap } from './ta3.js';
+import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History } from './ta3.js';
 import { getLocalImageList, pickRandom } from './pic.js';
-import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers } from './ss.js';
+import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory } from './ss.js';
 
 export default {
   name: 'سكب',
@@ -32,6 +32,8 @@ export default {
       state.answers = nextQ.answers;
       state.playerProgress = {};
       state.startTime = Date.now();
+
+      pushTa3History(ctx, chatId, { question: nextQ.question, answers: nextQ.answers });
 
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
       await ctx.reply(`*تع/3 ${nextQ.question}*`);
@@ -106,6 +108,8 @@ export default {
       state.answerData = buildSSAnswerData(nextQ.answers);
       state.playerProgress = {};
       state.startTime = Date.now();
+
+      pushSSHistory(ctx, chatId, { question: nextQ.question, answersRaw: nextQ.answers });
 
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
       await ctx.reply(`*س/ ${nextQ.question}*`);
