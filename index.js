@@ -2,8 +2,6 @@ import 'dotenv/config';
 import ffmpeg from 'ffmpeg-static';
 process.env.FFMPEG_PATH = ffmpeg;
 
-process.env.LOG_LEVEL = 'warn';
-
 import makeWASocket, {
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
@@ -46,7 +44,7 @@ async function start() {
     logger: baileysLogger,
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, coreLogger)
+      keys: makeCacheableSignalKeyStore(state.keys, baileysLogger)
     },
     syncFullHistory: false,
     markOnlineOnConnect: false
