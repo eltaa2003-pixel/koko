@@ -31,7 +31,7 @@ export default {
       state.answersMap = buildAnswersMap(nextQ.answers);
       state.answers = nextQ.answers;
       state.playerProgress = {};
-      state.startTime = Date.now();
+      state.startTime = process.hrtime.bigint();
 
       pushTa3History(ctx, chatId, { question: nextQ.question, answers: nextQ.answers });
 
@@ -80,7 +80,7 @@ export default {
           image: { url: nextItem.path },
           jpegThumbnail: null
         });
-        state.startTime = Date.now();
+        state.startTime = process.hrtime.bigint();
       } catch (err) {
         console.error('صورة game skip send error:', err);
       }
@@ -107,7 +107,7 @@ export default {
       state.answersRaw = nextQ.answers;
       state.answerData = buildSSAnswerData(nextQ.answers);
       state.playerProgress = {};
-      state.startTime = Date.now();
+      state.startTime = process.hrtime.bigint();
 
       pushSSHistory(ctx, chatId, { question: nextQ.question, answersRaw: nextQ.answers });
 

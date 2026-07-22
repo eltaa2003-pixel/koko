@@ -142,7 +142,7 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
-  const timeTaken = ((Date.now() - state.startTime) / 1000).toFixed(3);
+  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -168,7 +168,7 @@ async function processMessage(ctx, chatId, state, m) {
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
   ).then(() => {
-    state.startTime = Date.now();
+    state.startTime = process.hrtime.bigint();
   }).catch(err => console.error('كت game send error:', err));
 }
 
@@ -242,7 +242,7 @@ export default {
       targetNormalized, 
       targetTotal: targetNormalized.length,
       players: {}, 
-      startTime: Date.now(),
+      startTime: process.hrtime.bigint(),
       scores: {},
       queue: Promise.resolve() 
     };
@@ -250,6 +250,6 @@ export default {
     store.set(ctx.chatId, state);
 
     await ctx.reply(`*${targetWords.join(' ')}*`);
-    state.startTime = Date.now();
+    state.startTime = process.hrtime.bigint();
   }
 };

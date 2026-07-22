@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
@@ -89,7 +90,7 @@ async function handlePendingAdd(ctx, chatId, state, m) {
   const pending = pendingStore.get(senderJid);
   if (!pending) return false;
 
-  if (Date.now() - pending.timestamp > 120000) {
+  if (process.hrtime.bigint() - pending.timestamp > 120000000000000n) {
     pendingStore.delete(senderJid);
     await ctx.sock.sendMessage(chatId, { text: 'انتهت مهلة الإضافة. أرسل .ضف مجدداً إذا أردت.' }, { quoted: m }).catch(() => {});
     return true;
@@ -108,7 +109,7 @@ async function handlePendingAdd(ctx, chatId, state, m) {
     pendingStore.set(senderJid, {
       step: 2,
       snapshot: chosen,
-      timestamp: Date.now()
+      timestamp: process.hrtime.bigint()
     });
     await ctx.sock.sendMessage(chatId, { text: `تم اختيار: ${chosen.question}\n\nأرسل الأسماء الجديدة مفصولة بفاصلة (مثال: اسم1، اسم2، اسم3)` }, { quoted: m }).catch(() => {});
     return true;
@@ -123,7 +124,7 @@ async function handlePendingAdd(ctx, chatId, state, m) {
 
     let data;
     try {
-      const raw = fs.readFileSync(GAME_DATA_PATH, 'utf-8');
+      const raw = await readFile(GAME_DATA_PATH, 'utf-8');
       data = JSON.parse(raw);
     } catch (err) {
       await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء قراءة ملف البيانات.' }, { quoted: m }).catch(() => {});
@@ -173,7 +174,7 @@ async function handlePendingAdd(ctx, chatId, state, m) {
     }
 
     try {
-      fs.writeFileSync(GAME_DATA_PATH, JSON.stringify(data, null, 2));
+      await writeFile(GAME_DATA_PATH, JSON.stringify(data, null, 2));
     } catch (err) {
       await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء كتابة ملف البيانات.' }, { quoted: m }).catch(() => {});
       pendingStore.delete(senderJid);
@@ -228,7 +229,7 @@ async function processMessage(ctx, chatId, state, m) {
     if (state.isTransitioning) return;
     state.isTransitioning = true;
 
-    const timeTaken = ((Date.now() - state.startTime) / 1000).toFixed(3);
+    const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
     const winnerMention = `@${senderJid.split('@')[0]}`;
 
     state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -247,7 +248,7 @@ async function processMessage(ctx, chatId, state, m) {
     state.answersMap = buildAnswersMap(nextQ.answers);
     state.answers = nextQ.answers;
     state.playerProgress = {};
-    state.startTime = Date.now();
+    state.startTime = process.hrtime.bigint();
 
     const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*تع/3 ${nextQ.question}*`;
 
@@ -259,7 +260,7 @@ async function processMessage(ctx, chatId, state, m) {
       },
       { quoted: m }
     ).then(() => {
-      state.startTime = Date.now();
+      state.startTime = process.hrtime.bigint();
       state.isTransitioning = false;
     }).catch(err => {
       console.error('تع game send error:', err);
@@ -320,7 +321,7 @@ export default {
       pendingStore.set(ctx.sender, {
         step: 1,
         snapshots: history.slice(-5),
-        timestamp: Date.now()
+        timestamp: process.hrtime.bigint()
       });
       return;
     }
@@ -344,7 +345,7 @@ export default {
       answersMap: buildAnswersMap(firstQ.answers),
       answers: firstQ.answers,
       playerProgress: {},
-      startTime: Date.now(),
+      startTime: process.hrtime.bigint(),
       scores: {},
       queue: Promise.resolve(),
       isTransitioning: false
@@ -353,6 +354,6 @@ export default {
     store.set(ctx.chatId, state);
 
     await ctx.reply(`*تع/3 ${firstQ.question}*`);
-    state.startTime = Date.now();
+    state.startTime = process.hrtime.bigint();
   }
 };

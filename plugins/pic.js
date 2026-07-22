@@ -142,7 +142,7 @@ async function processMessage(ctx, chatId, state, m) {
   }
   if (!hit) return;
 
-  const timeTaken = ((Date.now() - state.startTime) / 1000).toFixed(3);
+  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
   const winnerJid = m.key.participant || m.key.remoteJid;
   const winnerMention = `@${winnerJid.split('@')[0]}`;
   state.scores[winnerJid] = (state.scores[winnerJid] || 0) + 1;
@@ -168,7 +168,7 @@ async function processMessage(ctx, chatId, state, m) {
       },
       { quoted: m }
     );
-    state.startTime = Date.now();
+    state.startTime = process.hrtime.bigint();
   } catch (err) {
     console.error('صورة game send error:', err);
   }
@@ -237,7 +237,7 @@ export default {
     const state = {
       currentItem: firstItem,
       answerVariants: firstItem.answerVariants,
-      startTime: Date.now(), 
+      startTime: process.hrtime.bigint(), 
       scores: {},
       queue: Promise.resolve()
     };
@@ -249,7 +249,7 @@ export default {
         image: { url: firstItem.path },
         jpegThumbnail: null // Skip processing
       });
-      state.startTime = Date.now();
+      state.startTime = process.hrtime.bigint();
     } catch (err) {
       console.error('start pic game error:', err);
       await ctx.reply('تعذر تحميل الصورة الأولى.');
