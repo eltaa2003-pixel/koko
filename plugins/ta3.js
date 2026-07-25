@@ -1,7 +1,11 @@
 import { loadCategory, saveAnswers } from '../lib/gameData.js';
 import { recordWin } from '../lib/playerStats.js';
+import { makeRecentTracker } from '../lib/recentPicks.js';
+import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 
 export const TA3_POOL = await loadCategory('تع');
+
+export const recentTracker = makeRecentTracker();
 
 function normalizeText(text) {
   if (!text) return '';
@@ -21,10 +25,19 @@ function normalizeText(text) {
     .replace(/\s+/g, ' ');
 }
 
-export function getRandomQuestion() {
+export function getRandomQuestion(excludeSet) {
   if (!TA3_POOL.length) return null;
-  const randomIndex = Math.floor(Math.random() * TA3_POOL.length);
-  return TA3_POOL[randomIndex];
+
+  let pool = TA3_POOL;
+  if (excludeSet && excludeSet.size > 0) {
+    const filtered = pool.filter(q => !excludeSet.has(normalizeText(q.question)));
+    if (filtered.length > 0) {
+      pool = filtered;
+    }
+  }
+
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  return pool[randomIndex];
 }
 
 export function buildAnswersMap(answersArray) {
@@ -125,6 +138,12 @@ async function handlePendingAdd(ctx, chatId, state, m) {
       }
     }
 
+    const collisions = findAnswerCollisions(deduped, TA3_POOL, normalizeText);
+    if (collisions.length) {
+      const warning = collisions.map(c => `تنبيه: الإجابة '${c.answer}' مستخدمة أيضاً في سؤال '${c.existingQuestion}'`).join('\n');
+      await ctx.sock.sendMessage(chatId, { text: warning }, { quoted: m }).catch(() => {});
+    }
+
     for (const ans of deduped) {
       const key = normalizeText(ans);
       if (!poolEntry.answers.some(a => normalizeText(a) === key)) poolEntry.answers.push(ans);
@@ -204,13 +223,15 @@ async function processMessage(ctx, chatId, state, m) {
 
     await recordWin({ jid: senderJid, game: 'تع', timeTaken, label: state.currentQuestion, answeredCount: 3 });
 
-    const nextQ = getRandomQuestion();
+    const nextQ = getRandomQuestion(recentTracker.getExcluded(chatId));
     if (!nextQ) {
       store.delete(chatId);
       ctx.sock.sendMessage(chatId, { text: 'خطأ: لم يتم العثور على أسئلة في فئة تع.' }).catch(() => {});
       state.isTransitioning = false;
       return;
     }
+
+    recentTracker.record(chatId, [normalizeText(nextQ.question)]);
 
     pushHistory(ctx, chatId, { question: nextQ.question, answers: nextQ.answers });
 
@@ -306,8 +327,10 @@ export default {
       return;
     }
 
-    const firstQ = getRandomQuestion();
+    const firstQ = getRandomQuestion(recentTracker.getExcluded(ctx.chatId));
     if (!firstQ) return;
+
+    recentTracker.record(ctx.chatId, [normalizeText(firstQ.question)]);
 
     pushHistory(ctx, ctx.chatId, { question: firstQ.question, answers: firstQ.answers });
 

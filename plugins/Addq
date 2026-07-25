@@ -1,6 +1,7 @@
 import { insertQuestion } from '../lib/gameData.js';
 import { SS_POOL } from './ss.js';
 import { TA3_POOL } from './ta3.js';
+import { findExactDuplicate, findAnswerCollisions } from '../lib/duplicateCheck.js';
 
 const TIMEOUT_NS = 120000000000000n; // matches ضفسس/ضفتع's timeout
 
@@ -97,7 +98,7 @@ async function handlePending(ctx, chatId, m) {
     }
 
     const pool = pending.category === 'سس' ? SS_POOL : TA3_POOL;
-    if (pool.some(q => normalizeText(q.question) === normalizeText(question))) {
+    if (findExactDuplicate(question, pool, q => q.question, normalizeText)) {
       await ctx.sock.sendMessage(chatId, { text: 'هذا السؤال موجود مسبقاً في هذه الفئة. أرسل سؤالاً آخر أو اكتب الغاء.' }, { quoted: m }).catch(() => {});
       return true;
     }
@@ -162,10 +163,17 @@ async function finalizeQuestion(ctx, chatId, m, pending, answers, pendingStore, 
   const { category, question } = pending;
 
   const pool = category === 'سس' ? SS_POOL : TA3_POOL;
-  if (pool.some(q => normalizeText(q.question) === normalizeText(question))) {
+  if (findExactDuplicate(question, pool, q => q.question, normalizeText)) {
     await ctx.sock.sendMessage(chatId, { text: 'هذا السؤال أُضيف بالفعل من مكان آخر أثناء المعالجة. أرسل .ضفسؤال للمحاولة من جديد.' }, { quoted: m }).catch(() => {});
     pendingStore.delete(senderJid);
     return;
+  }
+
+  const flatAnswers = Array.isArray(answers[0]) ? answers.flat() : answers;
+  const collisions = findAnswerCollisions(flatAnswers, pool, normalizeText);
+  if (collisions.length) {
+    const warning = collisions.map(c => `تنبيه: الإجابة '${c.answer}' مستخدمة أيضاً في سؤال '${c.existingQuestion}'`).join('\n');
+    await ctx.sock.sendMessage(chatId, { text: warning }, { quoted: m }).catch(() => {});
   }
 
   let entry;

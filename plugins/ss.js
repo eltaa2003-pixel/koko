@@ -1,7 +1,11 @@
 import { loadCategory, saveAnswers } from '../lib/gameData.js';
 import { recordWin } from '../lib/playerStats.js';
+import { makeRecentTracker } from '../lib/recentPicks.js';
+import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 
 export const SS_POOL = await loadCategory('سس');
+
+export const recentTracker = makeRecentTracker();
 
 function normalizeText(text) {
   if (!text) return '';
@@ -21,9 +25,18 @@ function normalizeText(text) {
     .replace(/\s+/g, ' ');
 }
 
-export function getRandomQuestion() {
+export function getRandomQuestion(excludeSet) {
   if (!SS_POOL.length) return null;
-  return SS_POOL[Math.floor(Math.random() * SS_POOL.length)];
+
+  let pool = SS_POOL;
+  if (excludeSet && excludeSet.size > 0) {
+    const filtered = pool.filter(q => !excludeSet.has(normalizeText(q.question)));
+    if (filtered.length > 0) {
+      pool = filtered;
+    }
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export function buildAnswerData(answersRaw) {
@@ -146,6 +159,12 @@ async function handlePendingAdd(ctx, chatId, state, m) {
       }
     }
 
+    const collisions = findAnswerCollisions(deduped, SS_POOL, normalizeText);
+    if (collisions.length) {
+      const warning = collisions.map(c => `تنبيه: الإجابة '${c.answer}' مستخدمة أيضاً في سؤال '${c.existingQuestion}'`).join('\n');
+      await ctx.sock.sendMessage(chatId, { text: warning }, { quoted: m }).catch(() => {});
+    }
+
     for (const ans of deduped) {
       const key = normalizeText(ans);
       if (!poolEntry.answers.some(a => normalizeText(a) === key)) poolEntry.answers.push(ans);
@@ -219,13 +238,15 @@ async function processMessage(ctx, chatId, state, m) {
 
   await recordWin({ jid: senderJid, game: 'سس', timeTaken, label: state.currentQuestion, answeredCount: state.answerData.slotCount });
 
-  const nextQ = getRandomQuestion();
+  const nextQ = getRandomQuestion(recentTracker.getExcluded(chatId));
   if (!nextQ) {
     store.delete(chatId);
     ctx.sock.sendMessage(chatId, { text: 'خطأ: لم يتم العثور على أسئلة في فئة سس.' }).catch(() => {});
     state.isTransitioning = false;
     return;
   }
+
+  recentTracker.record(chatId, [normalizeText(nextQ.question)]);
 
   pushHistory(ctx, chatId, { question: nextQ.question, answersRaw: nextQ.answers });
 
@@ -313,8 +334,10 @@ export default {
       return;
     }
 
-    const firstQ = getRandomQuestion();
+    const firstQ = getRandomQuestion(recentTracker.getExcluded(ctx.chatId));
     if (!firstQ) return;
+
+    recentTracker.record(ctx.chatId, [normalizeText(firstQ.question)]);
 
     pushHistory(ctx, ctx.chatId, { question: firstQ.question, answersRaw: firstQ.answers });
 

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { recordWin } from '../lib/playerStats.js';
+import { makeRecentTracker } from '../lib/recentPicks.js';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 
@@ -34,19 +35,30 @@ export function normalizeText(text) {
     .replace(/\s+/g, ' ');          
 }
 
-export function getRandomWords(count) {
+export function getRandomWords(count, excludeSet) {
   const n = ALL_WORDS.length;
   if (!n) return [];
   const take = Math.min(count, n);
-  const pool = ALL_WORDS.slice(); 
+
+  let pool = ALL_WORDS.slice();
+  if (excludeSet && excludeSet.size > 0) {
+    const filtered = pool.filter(w => !excludeSet.has(normalizeText(w)));
+    if (filtered.length >= take) {
+      pool = filtered;
+    }
+  }
+
+  const m = pool.length;
   const result = new Array(take);
   for (let i = 0; i < take; i++) {
-    const j = i + Math.floor(Math.random() * (n - i));
+    const j = i + Math.floor(Math.random() * (m - i));
     result[i] = pool[j];
     pool[j] = pool[i];
   }
   return result;
 }
+
+export const recentTracker = makeRecentTracker();
 
 function buildRemaining(normalizedWords) {
   const remaining = new Map();
@@ -174,8 +186,9 @@ async function processMessage(ctx, chatId, state, m) {
 
   await recordWin({ jid: senderJid, game: 'كت', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
 
-  const nextWords = getRandomWords(state.targetCount);
+  const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
   const nextNormalized = nextWords.map(normalizeText);
+  recentTracker.record(chatId, nextNormalized);
 
   if (nextWords.length < state.targetCount) {
     ctx.sock.sendMessage(chatId, {
@@ -258,8 +271,9 @@ export default {
       return;
     }
 
-    const targetWords = getRandomWords(count);
+    const targetWords = getRandomWords(count, recentTracker.getExcluded(ctx.chatId));
     const targetNormalized = targetWords.map(normalizeText);
+    recentTracker.record(ctx.chatId, targetNormalized);
 
     if (targetWords.length < count) {
       await ctx.reply(`يوجد فقط ${targetWords.length} كلمة متاحة في هذه الفئة (تم طلب ${count}).`);

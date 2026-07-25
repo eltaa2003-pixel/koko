@@ -4,6 +4,9 @@
 // (e.g. "ساسكي" -> "س ا س ك ي").
 import { getRandomWords, normalizeText } from './kat.js';
 import { recordWin } from '../lib/playerStats.js';
+import { makeRecentTracker } from '../lib/recentPicks.js';
+
+export const recentTracker = makeRecentTracker();
 
 export function buildLetterSeqs(normalizedWords) {
   return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' '));
@@ -122,8 +125,9 @@ async function processMessage(ctx, chatId, state, m) {
 
   await recordWin({ jid: senderJid, game: 'تفكيك', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
 
-  const nextWords = getRandomWords(state.targetCount);
+  const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
   const nextNormalized = nextWords.map(normalizeText);
+  recentTracker.record(chatId, nextNormalized);
 
   if (nextWords.length < state.targetCount) {
     ctx.sock.sendMessage(chatId, {
@@ -201,13 +205,14 @@ export default {
 
     if (count < 1) count = 1;
 
-    const targetWords = getRandomWords(count);
+    const targetWords = getRandomWords(count, recentTracker.getExcluded(ctx.chatId));
     if (!targetWords.length) {
       await ctx.reply('خطأ: لم يتم العثور على كلمات في game-data.json');
       return;
     }
 
     const targetNormalized = targetWords.map(normalizeText);
+    recentTracker.record(ctx.chatId, targetNormalized);
 
     if (targetWords.length < count) {
       await ctx.reply(`يوجد فقط ${targetWords.length} كلمة متاحة في هذه الفئة (تم طلب ${count}).`);

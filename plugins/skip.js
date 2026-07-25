@@ -1,8 +1,8 @@
-import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History } from './ta3.js';
+import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History, recentTracker as ta3Tracker, normalizeText as normalizeTa3Text } from './ta3.js';
 import { getLocalImageList, pickRandom } from './pic.js';
-import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory } from './ss.js';
-import { getRandomWords, normalizeText as normalizeKatText, buildNormToOriginal } from './kat.js';
-import { buildLetterSeqs } from './tafkik.js';
+import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory, recentTracker as ssTracker, normalizeText as normalizeSSText } from './ss.js';
+import { getRandomWords, normalizeText as normalizeKatText, buildNormToOriginal, recentTracker as katTracker } from './kat.js';
+import { buildLetterSeqs, recentTracker as tafkikTracker } from './tafkik.js';
 
 export default {
   name: 'سكب',
@@ -19,8 +19,9 @@ export default {
       if (state.isTransitioning) return;
       state.isTransitioning = true;
 
-      const answersList = (state.answers || []).join(' ، ');
-      const nextQ = getRandomQuestion();
+      const answersList = (state.answers || []).join(' ， ');
+      const nextQ = getRandomQuestion(ta3Tracker.getExcluded(chatId));
+      ta3Tracker.record(chatId, [normalizeTa3Text(nextQ.question)]);
 
       if (!nextQ) {
         ta3Store.delete(chatId);
@@ -49,7 +50,7 @@ export default {
       const state = katStore.get(chatId);
       const correctAnswers = state.targetWords.join(' - ');
 
-      const nextWords = getRandomWords(state.targetCount);
+      const nextWords = getRandomWords(state.targetCount, katTracker.getExcluded(chatId));
 
       if (!nextWords.length) {
         await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\nخطأ: لم يتم العثور على كلمات جديدة.`);
@@ -57,6 +58,7 @@ export default {
       }
 
       const nextNormalized = nextWords.map(normalizeKatText);
+      katTracker.record(chatId, nextNormalized);
 
       state.targetWords = nextWords;
       state.targetNormalized = nextNormalized;
@@ -74,7 +76,7 @@ export default {
       const state = tafkikStore.get(chatId);
       const correctAnswers = state.targetWords.join(' - ');
 
-      const nextWords = getRandomWords(state.targetCount);
+      const nextWords = getRandomWords(state.targetCount, tafkikTracker.getExcluded(chatId));
 
       if (!nextWords.length) {
         await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\nخطأ: لم يتم العثور على كلمات جديدة.`);
@@ -82,6 +84,7 @@ export default {
       }
 
       const nextNormalized = nextWords.map(normalizeKatText);
+      tafkikTracker.record(chatId, nextNormalized);
 
       state.targetWords = nextWords;
       state.targetNormalized = nextNormalized;
@@ -131,7 +134,7 @@ export default {
       state.isTransitioning = true;
 
       const answersList = getSSDisplayAnswers(state.answersRaw);
-      const nextQ = getRandomSSQuestion();
+      const nextQ = getRandomSSQuestion(ssTracker.getExcluded(chatId));
 
       if (!nextQ) {
         ssStore.delete(chatId);
@@ -139,6 +142,8 @@ export default {
         state.isTransitioning = false;
         return;
       }
+
+      ssTracker.record(chatId, [normalizeSSText(nextQ.question)]);
 
       state.currentQuestion = nextQ.question;
       state.answersRaw = nextQ.answers;
