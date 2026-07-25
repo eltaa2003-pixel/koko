@@ -37,10 +37,8 @@ async function addStickerExif(webpBuffer, packname, author) {
   return img.save(null);
 }
 
-// Pad-to-square scale filter shared by both image and video conversion —
-// WhatsApp stickers must be exactly 512x512, transparent-padded if the
-// source isn't already square.
 const SCALE_PAD = "scale='min(512,iw)':'min(512,ih)':force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000";
+const SCALE_ONLY = "scale='min(512,iw)':'min(512,ih)':force_original_aspect_ratio=decrease";
 
 async function imageToWebp(inputPath, outputPath) {
   await execFilePromise(ffmpegPath, [
@@ -59,7 +57,7 @@ async function videoToAnimatedWebp(inputPath, outputPath) {
     // fps=10 keeps frame count (and therefore size) down — WhatsApp stickers
     // don't need to be silky smooth, and this is the single biggest lever
     // on staying under the size limit for anything longer than ~2 seconds.
-    '-vf', `fps=10,${SCALE_PAD}`,
+    '-vf', `fps=10,${SCALE_ONLY}`,
     '-vcodec', 'libwebp',
     '-loop', '0',
     '-preset', 'default',
@@ -111,7 +109,27 @@ export default {
 
     await sock.sendMessage(chatId, { react: { text: '⏳', key: msg.key } }).catch(() => {});
 
-    const customPackName = args.length > 0 ? args.join(' ') : 'Elta Stickers';
+    const rawInput = args.join(' ').trim();
+
+    let customPackName = 'Elta Stickers';
+    let customAuthor = 'Elta';
+
+    if (rawInput.length > 0) {
+      const separator = rawInput.includes('|') ? '|'
+                       : rawInput.includes(',') ? ','
+                       : null;
+
+      if (separator) {
+        const splitIndex = rawInput.indexOf(separator);
+        const namePart = rawInput.slice(0, splitIndex).trim();
+        const authorPart = rawInput.slice(splitIndex + 1).trim();
+
+        customPackName = namePart || 'Elta Stickers';
+        customAuthor = authorPart || 'Elta';
+      } else {
+        customPackName = rawInput;
+      }
+    }
     const tempId = randomBytes(4).toString('hex');
     let inputPath, outputPath;
 
@@ -122,14 +140,14 @@ export default {
       if (targetType === 'stickerMessage') {
         // Rebrand mode: reply to any sticker with .w [name] to relabel it as
         // your own pack, no re-encoding involved.
-        finalStickerBuffer = await addStickerExif(mediaBuffer, customPackName, 'Elta');
+        finalStickerBuffer = await addStickerExif(mediaBuffer, customPackName, customAuthor);
       } else if (targetType === 'imageMessage') {
         inputPath = path.join(os.tmpdir(), `sticker_in_${tempId}.jpg`);
         outputPath = path.join(os.tmpdir(), `sticker_out_${tempId}.webp`);
         await fsp.writeFile(inputPath, mediaBuffer);
         await imageToWebp(inputPath, outputPath);
         const rawWebp = await fsp.readFile(outputPath);
-        finalStickerBuffer = await addStickerExif(rawWebp, customPackName, 'Elta');
+        finalStickerBuffer = await addStickerExif(rawWebp, customPackName, customAuthor);
       } else {
         // videoMessage
         inputPath = path.join(os.tmpdir(), `sticker_in_${tempId}.mp4`);
@@ -143,7 +161,7 @@ export default {
           console.warn('[sticker] still over ~1MB — WhatsApp may show this as a plain attachment instead of a sticker. Consider a shorter clip or lower fps/quality.');
         }
 
-        finalStickerBuffer = await addStickerExif(rawWebp, customPackName, 'Elta');
+        finalStickerBuffer = await addStickerExif(rawWebp, customPackName, customAuthor);
       }
 
       await sock.sendMessage(chatId, { sticker: finalStickerBuffer }, { quoted: msg });
