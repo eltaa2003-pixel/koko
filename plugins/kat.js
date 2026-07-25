@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { recordWin } from '../lib/playerStats.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
+import { normalizeLenient } from '../lib/normalizeArabic.js';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 
@@ -18,23 +19,6 @@ function loadWords() {
 
 const ALL_WORDS = loadWords();
 
-export function normalizeText(text) {
-  if (!text) return '';
-  return text
-    .trim()
-    .replace(/[\u200B-\u200F\uFEFF]/g, '') 
-    .replace(/\u0640/g, '')          
-    .replace(/[\u064B-\u0652]/g, '') 
-    .replace(/[أإآ]/g, 'ا')         
-    .replace(/ة/g, 'ه')             
-    .replace(/ۃ/g, 'ه')             
-    .replace(/ى/g, 'ي')             
-    .replace(/[یے]/g, 'ي')          
-    .replace(/ک/g, 'ك')             
-    .replace(/ہ/g, 'ه')             
-    .replace(/\s+/g, ' ');          
-}
-
 export function getRandomWords(count, excludeSet) {
   const n = ALL_WORDS.length;
   if (!n) return [];
@@ -42,7 +26,7 @@ export function getRandomWords(count, excludeSet) {
 
   let pool = ALL_WORDS.slice();
   if (excludeSet && excludeSet.size > 0) {
-    const filtered = pool.filter(w => !excludeSet.has(normalizeText(w)));
+    const filtered = pool.filter(w => !excludeSet.has(normalizeLenient(w)));
     if (filtered.length >= take) {
       pool = filtered;
     }
@@ -127,7 +111,7 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!text) return;
 
-  const normInput = normalizeText(text);
+  const normInput = normalizeLenient(text);
   const incomingWords = normInput.split(/[^\u0621-\u064A]+/).filter(Boolean);
   if (incomingWords.length === 0) return;
 
@@ -191,7 +175,7 @@ async function processMessage(ctx, chatId, state, m) {
   }
 
   const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
-  const nextNormalized = nextWords.map(normalizeText);
+  const nextNormalized = nextWords.map(normalizeLenient);
   recentTracker.record(chatId, nextNormalized);
 
   if (nextWords.length < state.targetCount) {
@@ -276,7 +260,7 @@ export default {
     }
 
     const targetWords = getRandomWords(count, recentTracker.getExcluded(ctx.chatId));
-    const targetNormalized = targetWords.map(normalizeText);
+    const targetNormalized = targetWords.map(normalizeLenient);
     recentTracker.record(ctx.chatId, targetNormalized);
 
     if (targetWords.length < count) {

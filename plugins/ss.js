@@ -2,35 +2,18 @@ import { loadCategory, saveAnswers } from '../lib/gameData.js';
 import { recordWin } from '../lib/playerStats.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { findAnswerCollisions } from '../lib/duplicateCheck.js';
+import { normalizeStrict } from '../lib/normalizeArabic.js';
 
 export const SS_POOL = await loadCategory('سس');
 
 export const recentTracker = makeRecentTracker();
-
-function normalizeText(text) {
-  if (!text) return '';
-  return text
-    .trim()
-    .replace(/[\u200B-\u200F\uFEFF]/g, '')
-    .replace(/\u0640/g, '')
-    .replace(/[\u064B-\u0652]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ۃ/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/[یے]/g, 'ي')
-    .replace(/ک/g, 'ك')
-    .replace(/ہ/g, 'ه')
-    .replace(/[جغق]/g, 'ج')
-    .replace(/\s+/g, ' ');
-}
 
 export function getRandomQuestion(excludeSet) {
   if (!SS_POOL.length) return null;
 
   let pool = SS_POOL;
   if (excludeSet && excludeSet.size > 0) {
-    const filtered = pool.filter(q => !excludeSet.has(normalizeText(q.question)));
+    const filtered = pool.filter(q => !excludeSet.has(normalizeStrict(q.question)));
     if (filtered.length > 0) {
       pool = filtered;
     }
@@ -47,7 +30,7 @@ export function buildAnswerData(answersRaw) {
   let maxWords = 1;
   slots.forEach((variants, slotIndex) => {
     for (const v of variants) {
-      const words = normalizeText(v).split(' ').filter(Boolean);
+      const words = normalizeStrict(v).split(' ').filter(Boolean);
       if (!words.length) continue;
       lookup.set(words.join(' '), slotIndex);
       if (words.length > maxWords) maxWords = words.length;
@@ -152,28 +135,28 @@ async function handlePendingAdd(ctx, chatId, state, m) {
     const seen = new Set();
     const deduped = [];
     for (const ans of newAnswers) {
-      const key = normalizeText(ans);
+      const key = normalizeStrict(ans);
       if (!seen.has(key)) {
         seen.add(key);
         deduped.push(ans);
       }
     }
 
-    const collisions = findAnswerCollisions(deduped, SS_POOL, normalizeText);
+    const collisions = findAnswerCollisions(deduped, SS_POOL, normalizeStrict);
     if (collisions.length) {
       const warning = collisions.map(c => `تنبيه: الإجابة '${c.answer}' مستخدمة أيضاً في سؤال '${c.existingQuestion}'`).join('\n');
       await ctx.sock.sendMessage(chatId, { text: warning }, { quoted: m }).catch(() => {});
     }
 
     for (const ans of deduped) {
-      const key = normalizeText(ans);
-      if (!poolEntry.answers.some(a => normalizeText(a) === key)) poolEntry.answers.push(ans);
+      const key = normalizeStrict(ans);
+      if (!poolEntry.answers.some(a => normalizeStrict(a) === key)) poolEntry.answers.push(ans);
     }
 
     const liveState = ctx.store.namespace('ssGame').get(chatId);
     if (liveState && liveState.currentQuestion === pending.snapshot.question) {
       for (const ans of deduped) {
-        const words = normalizeText(ans).split(' ').filter(Boolean);
+        const words = normalizeStrict(ans).split(' ').filter(Boolean);
         if (!words.length) continue;
         const key = words.join(' ');
         if (!liveState.answerData.lookup.has(key)) {
@@ -211,7 +194,7 @@ async function processMessage(ctx, chatId, state, m) {
   const text = m.message?.conversation || m.message?.extendedTextMessage?.text || '';
   if (!text) return;
 
-  const incomingWords = normalizeText(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
+  const incomingWords = normalizeStrict(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
   if (!incomingWords.length) return;
 
   const senderJid = m.key.participant || m.key.remoteJid;
@@ -250,7 +233,7 @@ async function processMessage(ctx, chatId, state, m) {
     return;
   }
 
-  recentTracker.record(chatId, [normalizeText(nextQ.question)]);
+  recentTracker.record(chatId, [normalizeStrict(nextQ.question)]);
 
   pushHistory(ctx, chatId, { question: nextQ.question, answersRaw: nextQ.answers });
 
@@ -341,7 +324,7 @@ export default {
     const firstQ = getRandomQuestion(recentTracker.getExcluded(ctx.chatId));
     if (!firstQ) return;
 
-    recentTracker.record(ctx.chatId, [normalizeText(firstQ.question)]);
+    recentTracker.record(ctx.chatId, [normalizeStrict(firstQ.question)]);
 
     pushHistory(ctx, ctx.chatId, { question: firstQ.question, answersRaw: firstQ.answers });
 

@@ -1,7 +1,8 @@
-import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History, recentTracker as ta3Tracker, normalizeText as normalizeTa3Text } from './ta3.js';
+import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History, recentTracker as ta3Tracker } from './ta3.js';
 import { getLocalImageList, pickRandom } from './pic.js';
-import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory, recentTracker as ssTracker, normalizeText as normalizeSSText } from './ss.js';
-import { getRandomWords, normalizeText as normalizeKatText, buildNormToOriginal, recentTracker as katTracker } from './kat.js';
+import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory, recentTracker as ssTracker } from './ss.js';
+import { getRandomWords, buildNormToOriginal, recentTracker as katTracker } from './kat.js';
+import { normalizeStrict, normalizeLenient } from '../lib/normalizeArabic.js';
 import { buildLetterSeqs, recentTracker as tafkikTracker } from './tafkik.js';
 
 export default {
@@ -21,7 +22,6 @@ export default {
 
       const answersList = (state.answers || []).join(' ， ');
       const nextQ = getRandomQuestion(ta3Tracker.getExcluded(chatId));
-      ta3Tracker.record(chatId, [normalizeTa3Text(nextQ.question)]);
 
       if (!nextQ) {
         ta3Store.delete(chatId);
@@ -29,6 +29,8 @@ export default {
         state.isTransitioning = false;
         return;
       }
+
+      ta3Tracker.record(chatId, [normalizeStrict(nextQ.question)]);
 
       state.currentQuestion = nextQ.question;
       state.answersMap = buildAnswersMap(nextQ.answers);
@@ -57,7 +59,7 @@ export default {
         return;
       }
 
-      const nextNormalized = nextWords.map(normalizeKatText);
+      const nextNormalized = nextWords.map(normalizeLenient);
       katTracker.record(chatId, nextNormalized);
 
       state.targetWords = nextWords;
@@ -83,7 +85,7 @@ export default {
         return;
       }
 
-      const nextNormalized = nextWords.map(normalizeKatText);
+      const nextNormalized = nextWords.map(normalizeLenient);
       tafkikTracker.record(chatId, nextNormalized);
 
       state.targetWords = nextWords;
@@ -143,7 +145,7 @@ export default {
         return;
       }
 
-      ssTracker.record(chatId, [normalizeSSText(nextQ.question)]);
+      ssTracker.record(chatId, [normalizeStrict(nextQ.question)]);
 
       state.currentQuestion = nextQ.question;
       state.answersRaw = nextQ.answers;

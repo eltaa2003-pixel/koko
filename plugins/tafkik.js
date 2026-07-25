@@ -2,9 +2,10 @@
 // the bot shows the word normally, and the player has to type it back
 // decomposed into individual letters separated by spaces
 // (e.g. "ساسكي" -> "س ا س ك ي").
-import { getRandomWords, normalizeText } from './kat.js';
+import { getRandomWords } from './kat.js';
 import { recordWin } from '../lib/playerStats.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
+import { normalizeLenient } from '../lib/normalizeArabic.js';
 
 export const recentTracker = makeRecentTracker();
 
@@ -49,7 +50,7 @@ async function processMessage(ctx, chatId, state, m) {
     '';
   if (!text) return;
 
-  const normInput = normalizeText(text);
+  const normInput = normalizeLenient(text);
   // Every run of Arabic letters becomes its own token. A properly spaced
   // answer ("س ا س ك ي") produces one token per letter; a glued answer
   // ("ساسكي") produces one multi-letter token, which can never equal a
@@ -130,7 +131,7 @@ async function processMessage(ctx, chatId, state, m) {
   }
 
   const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
-  const nextNormalized = nextWords.map(normalizeText);
+  const nextNormalized = nextWords.map(normalizeLenient);
   recentTracker.record(chatId, nextNormalized);
 
   if (nextWords.length < state.targetCount) {
@@ -215,7 +216,7 @@ export default {
       return;
     }
 
-    const targetNormalized = targetWords.map(normalizeText);
+    const targetNormalized = targetWords.map(normalizeLenient);
     recentTracker.record(ctx.chatId, targetNormalized);
 
     if (targetWords.length < count) {
