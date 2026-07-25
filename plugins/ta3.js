@@ -1,21 +1,6 @@
-import fs from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
+import { loadCategory, saveAnswers } from '../lib/gameData.js';
 
-const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
-
-function loadGameData() {
-  try {
-    const raw = fs.readFileSync(GAME_DATA_PATH, 'utf-8');
-    const data = JSON.parse(raw);
-    return data['تع'] || [];
-  } catch (err) {
-    console.error('Error loading game-data.json:', err);
-    return [];
-  }
-}
-
-const TA3_POOL = loadGameData();
+export const TA3_POOL = await loadCategory('تع');
 
 function normalizeText(text) {
   if (!text) return '';
@@ -122,23 +107,6 @@ async function handlePendingAdd(ctx, chatId, state, m) {
       return true;
     }
 
-    let data;
-    try {
-      const raw = await readFile(GAME_DATA_PATH, 'utf-8');
-      data = JSON.parse(raw);
-    } catch (err) {
-      await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء قراءة ملف البيانات.' }, { quoted: m }).catch(() => {});
-      pendingStore.delete(senderJid);
-      return true;
-    }
-
-    const entry = (data['تع'] || []).find(q => q.question === pending.snapshot.question);
-    if (!entry) {
-      await ctx.sock.sendMessage(chatId, { text: 'لم يتم العثور على السؤال في ملف البيانات.' }, { quoted: m }).catch(() => {});
-      pendingStore.delete(senderJid);
-      return true;
-    }
-
     const poolEntry = TA3_POOL.find(q => q.question === pending.snapshot.question);
     if (!poolEntry) {
       await ctx.sock.sendMessage(chatId, { text: 'لم يتم العثور على السؤال في الذاكرة.' }, { quoted: m }).catch(() => {});
@@ -158,7 +126,6 @@ async function handlePendingAdd(ctx, chatId, state, m) {
 
     for (const ans of deduped) {
       const key = normalizeText(ans);
-      if (!entry.answers.some(a => normalizeText(a) === key)) entry.answers.push(ans);
       if (!poolEntry.answers.some(a => normalizeText(a) === key)) poolEntry.answers.push(ans);
     }
 
@@ -174,9 +141,9 @@ async function handlePendingAdd(ctx, chatId, state, m) {
     }
 
     try {
-      await writeFile(GAME_DATA_PATH, JSON.stringify(data, null, 2));
+      await saveAnswers(poolEntry._id, poolEntry.answers);
     } catch (err) {
-      await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء كتابة ملف البيانات.' }, { quoted: m }).catch(() => {});
+      await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء كتابة قاعدة البيانات.' }, { quoted: m }).catch(() => {});
       pendingStore.delete(senderJid);
       return true;
     }

@@ -1,0 +1,212 @@
+import { insertQuestion } from '../lib/gameData.js';
+import { SS_POOL } from './ss.js';
+import { TA3_POOL } from './ta3.js';
+
+const TIMEOUT_NS = 120000000000000n; // matches ضفسس/ضفتع's timeout
+
+const CATEGORY_KEYS = {
+  '1': 'سس',
+  'سس': 'سس',
+  '2': 'تع',
+  'تع': 'تع'
+};
+
+function normalizeText(text) {
+  if (!text) return '';
+  return text
+    .trim()
+    .replace(/[\u200B-\u200F\uFEFF]/g, '')
+    .replace(/\u0640/g, '')
+    .replace(/[\u064B-\u0652]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ۃ/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[یے]/g, 'ي')
+    .replace(/ک/g, 'ك')
+    .replace(/ہ/g, 'ه')
+    .replace(/[جغق]/g, 'ج')
+    .replace(/\s+/g, ' ');
+}
+
+function isCancel(text) {
+  const n = normalizeText(text).toLowerCase();
+  return n === 'الغاء' || n === 'إلغاء' || n === 'cancel';
+}
+
+function splitVariants(line) {
+  return line.split(/[,،]/).map(s => s.trim()).filter(Boolean);
+}
+
+const registeredSocks = new WeakSet();
+
+function ensureGlobalListener(ctx) {
+  if (registeredSocks.has(ctx.sock)) return;
+  registeredSocks.add(ctx.sock);
+
+  ctx.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    if (type !== 'notify' && type !== 'append') return;
+
+    for (const m of messages) {
+      if (!m.message || m.key.fromMe) continue;
+      const chatId = m.key.remoteJid;
+      await handlePending(ctx, chatId, m).catch(err => console.error('ضفسؤال processing error:', err));
+    }
+  });
+}
+
+async function handlePending(ctx, chatId, m) {
+  const pendingStore = ctx.store.namespace('addqPending');
+  const senderJid = m.key.participant || m.key.remoteJid;
+  const pending = pendingStore.get(senderJid);
+  if (!pending) return false;
+
+  if (process.hrtime.bigint() - pending.timestamp > TIMEOUT_NS) {
+    pendingStore.delete(senderJid);
+    await ctx.sock.sendMessage(chatId, { text: 'انتهت مهلة الإضافة. أرسل .ضفسؤال مجدداً إذا أردت.' }, { quoted: m }).catch(() => {});
+    return true;
+  }
+
+  const text = m.message?.conversation || m.message?.extendedTextMessage?.text || '';
+  if (!text) return true;
+
+  if (isCancel(text)) {
+    pendingStore.delete(senderJid);
+    await ctx.sock.sendMessage(chatId, { text: 'تم إلغاء الإضافة.' }, { quoted: m }).catch(() => {});
+    return true;
+  }
+
+  const bump = (patch) => pendingStore.set(senderJid, { ...pending, ...patch, timestamp: process.hrtime.bigint() });
+
+  if (pending.step === 'category') {
+    const category = CATEGORY_KEYS[text.trim()] || CATEGORY_KEYS[normalizeText(text)];
+    if (!category) {
+      await ctx.sock.sendMessage(chatId, { text: 'أرسل 1 لسس أو 2 لتع.' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+    bump({ step: 'question', category });
+    await ctx.sock.sendMessage(chatId, { text: 'أرسل نص السؤال:' }, { quoted: m }).catch(() => {});
+    return true;
+  }
+
+  if (pending.step === 'question') {
+    const question = text.trim();
+    if (!question) {
+      await ctx.sock.sendMessage(chatId, { text: 'أرسل نص سؤال صالح.' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+
+    const pool = pending.category === 'سس' ? SS_POOL : TA3_POOL;
+    if (pool.some(q => normalizeText(q.question) === normalizeText(question))) {
+      await ctx.sock.sendMessage(chatId, { text: 'هذا السؤال موجود مسبقاً في هذه الفئة. أرسل سؤالاً آخر أو اكتب الغاء.' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+
+    if (pending.category === 'سس') {
+      bump({ step: 'ss-mode', question });
+      await ctx.sock.sendMessage(chatId, {
+        text: 'هل للسؤال إجابة واحدة أم عدة إجابات مطلوبة؟\n1. إجابة واحدة (مع تهجئات بديلة مقبولة)\n2. عدة إجابات مطلوبة (مثال: أبناء ناروتو → بوروتو وهيماواري)'
+      }, { quoted: m }).catch(() => {});
+      return true;
+    }
+
+    bump({ step: 'answers-flat', question });
+    await ctx.sock.sendMessage(chatId, { text: 'أرسل الإجابات المقبولة مفصولة بفاصلة (مثال: اسم1، اسم2، اسم3)' }, { quoted: m }).catch(() => {});
+    return true;
+  }
+
+  if (pending.step === 'ss-mode') {
+    const choice = text.trim();
+    if (choice === '1') {
+      bump({ step: 'answers-flat' });
+      await ctx.sock.sendMessage(chatId, { text: 'أرسل الإجابات المقبولة مفصولة بفاصلة (مثال: اسم1، اسم2، اسم3)' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+    if (choice === '2') {
+      bump({ step: 'answers-grouped' });
+      await ctx.sock.sendMessage(chatId, {
+        text: 'أرسل كل إجابة مطلوبة في سطر منفصل، وضع التهجئات البديلة لنفس الإجابة بفاصلة داخل نفس السطر.\n\nمثال (أبناء ناروتو):\nبوروتو\nهيماواري'
+      }, { quoted: m }).catch(() => {});
+      return true;
+    }
+    await ctx.sock.sendMessage(chatId, { text: 'أرسل 1 لإجابة واحدة أو 2 لعدة إجابات مطلوبة.' }, { quoted: m }).catch(() => {});
+    return true;
+  }
+
+  if (pending.step === 'answers-flat') {
+    const answers = splitVariants(text);
+    if (!answers.length) {
+      await ctx.sock.sendMessage(chatId, { text: 'أرسل إجابة واحدة على الأقل مفصولة بفاصلة.' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+    await finalizeQuestion(ctx, chatId, m, pending, answers, pendingStore, senderJid);
+    return true;
+  }
+
+  if (pending.step === 'answers-grouped') {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const slots = lines.map(splitVariants).filter(variants => variants.length);
+    if (slots.length < 2) {
+      await ctx.sock.sendMessage(chatId, { text: 'أرسل سطرين على الأقل، كل سطر يمثل إجابة مطلوبة (أو اكتب الغاء للتراجع).' }, { quoted: m }).catch(() => {});
+      return true;
+    }
+    await finalizeQuestion(ctx, chatId, m, pending, slots, pendingStore, senderJid);
+    return true;
+  }
+
+  pendingStore.delete(senderJid);
+  return true;
+}
+
+async function finalizeQuestion(ctx, chatId, m, pending, answers, pendingStore, senderJid) {
+  const { category, question } = pending;
+
+  const pool = category === 'سس' ? SS_POOL : TA3_POOL;
+  if (pool.some(q => normalizeText(q.question) === normalizeText(question))) {
+    await ctx.sock.sendMessage(chatId, { text: 'هذا السؤال أُضيف بالفعل من مكان آخر أثناء المعالجة. أرسل .ضفسؤال للمحاولة من جديد.' }, { quoted: m }).catch(() => {});
+    pendingStore.delete(senderJid);
+    return;
+  }
+
+  let entry;
+  try {
+    entry = await insertQuestion(category, question, answers);
+  } catch (err) {
+    await ctx.sock.sendMessage(chatId, { text: 'حدث خطأ أثناء كتابة قاعدة البيانات.' }, { quoted: m }).catch(() => {});
+    pendingStore.delete(senderJid);
+    return;
+  }
+
+  // Push into the live in-memory pool so it works immediately, no restart needed.
+  pool.push(entry);
+
+  pendingStore.delete(senderJid);
+
+  const isGrouped = Array.isArray(answers[0]);
+  const summary = isGrouped
+    ? answers.map(variants => variants[0]).join(' ، ')
+    : answers.join(' ، ');
+
+  await ctx.sock.sendMessage(chatId, {
+    text: `تمت إضافة السؤال إلى فئة ${category} بنجاح:\n\n*س/ ${question}*\nج/ ${summary}`
+  }, { quoted: m }).catch(() => {});
+}
+
+export default {
+  name: 'ضفسؤال',
+  aliases: ['سؤالجديد'],
+  description: 'يضيف سؤال جديد بإجاباته إلى سس أو تع بشكل دائم',
+  cooldown: 0,
+
+  async execute(ctx) {
+    ensureGlobalListener(ctx);
+
+    const pendingStore = ctx.store.namespace('addqPending');
+    pendingStore.set(ctx.sender, {
+      step: 'category',
+      timestamp: process.hrtime.bigint()
+    });
+
+    await ctx.reply('لأي فئة تريد إضافة السؤال؟\n1. سس\n2. تع\n\n(اكتب الغاء في أي وقت للتراجع)');
+  }
+};
