@@ -25,55 +25,26 @@ function normalizeText(text) {
 function filenameToAnswer(filename) {
   return filename
     .replace(IMAGE_EXT_RE, '')
-    .replace(/\s*\(\d+\)\s*$/, '')
-    .replace(/[-_]\d+$/, '')
     .trim();
 }
 
-// --- Fuzzy matching ---------------------------------------------------
-// Handles small spelling differences (هاشفلد vs هاشفيلد, a missing/extra
-// letter, a swapped letter, etc.) without needing every variant hard-coded
-// into the filename. Exact matches are still checked first and are free;
-// this only kicks in when an exact match fails.
-function levenshtein(a, b) {
-  if (a === b) return 0;
-  const la = a.length, lb = b.length;
-  if (la === 0) return lb;
-  if (lb === 0) return la;
-
-  let prev = new Array(lb + 1);
-  let curr = new Array(lb + 1);
-  for (let j = 0; j <= lb; j++) prev[j] = j;
-
-  for (let i = 1; i <= la; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= lb; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(
-        prev[j] + 1,      // deletion
-        curr[j - 1] + 1,  // insertion
-        prev[j - 1] + cost // substitution
-      );
-    }
-    [prev, curr] = [curr, prev];
-  }
-  return prev[lb];
+// Strips a trailing "duplicate picture" number off a name, in whatever
+// form it shows up: "رين2", "رين-2", "رين_2", "رين 2", "رين (2)" all
+// become just "رين". Applied per variant (after splitting on , | ،) so it
+// works even when a duplicate-numbered file also lists multiple accepted
+// spellings, e.g. هاشفلد,هاشفيلد2.jpg -> "هاشفلد" and "هاشفيلد".
+function stripDuplicateSuffix(name) {
+  return name
+    .replace(/\s*\(\d+\)\s*$/, '')
+    .replace(/[-_\s]*\d+$/, '')
+    .trim();
 }
 
-// How many edits we tolerate scales with word length, so a 3-letter name
-// doesn't accidentally match totally different 3-letter names.
-function allowedEdits(len) {
-  if (len <= 3) return 0;
-  if (len <= 6) return 1;
-  return 2;
-}
-
-function wordsMatch(a, b) {
-  if (a === b) return true;
-  const maxLen = Math.max(a.length, b.length);
-  if (Math.abs(a.length - b.length) > allowedEdits(maxLen)) return false;
-  return levenshtein(a, b) <= allowedEdits(maxLen);
-}
+// Matching is intentionally strict: exact word match only. Any accepted
+// alternate spelling (e.g. هاشفلد vs هاشفيلد) needs to be listed explicitly
+// in the filename, separated by "|", "," or "،" — see getLocalImageList
+// below. This avoids any risk of two different names being confused for
+// each other.
 
 let cachedImageList = null;
 
@@ -90,7 +61,13 @@ export function getLocalImageList() {
     cachedImageList = files.map(filename => {
       const fullPath = path.join(IMAGES_DIR, filename);
       const rawAnswer = filenameToAnswer(filename);
-      const variants = rawAnswer.split('|').map(s => s.trim()).filter(Boolean);
+      // Accept "|", "," and the Arabic "،" as ways to separate multiple
+      // accepted spellings in a filename, e.g. هاشفلد,هاشفيلد.jpg or
+      // هاشفلد|هاشفيلد.jpg both work and are treated as two variants.
+      const variants = rawAnswer
+        .split(/[|,،]/)
+        .map(s => stripDuplicateSuffix(s.trim()))
+        .filter(Boolean);
       const ext = path.extname(filename).toLowerCase();
       let mime = 'image/jpeg';
       if (ext === '.png') mime = 'image/png';
@@ -179,7 +156,7 @@ async function processMessage(ctx, chatId, state, m) {
     for (let i = 0; i + winLen <= incomingWords.length; i++) {
       let ok = true;
       for (let k = 0; k < winLen; k++) {
-        if (!wordsMatch(incomingWords[i + k], answerWords[k])) { ok = false; break; }
+        if (incomingWords[i + k] !== answerWords[k]) { ok = false; break; }
       }
       if (ok) { hit = true; break; }
     }
