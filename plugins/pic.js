@@ -30,6 +30,51 @@ function filenameToAnswer(filename) {
     .trim();
 }
 
+// --- Fuzzy matching ---------------------------------------------------
+// Handles small spelling differences (هاشفلد vs هاشفيلد, a missing/extra
+// letter, a swapped letter, etc.) without needing every variant hard-coded
+// into the filename. Exact matches are still checked first and are free;
+// this only kicks in when an exact match fails.
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  const la = a.length, lb = b.length;
+  if (la === 0) return lb;
+  if (lb === 0) return la;
+
+  let prev = new Array(lb + 1);
+  let curr = new Array(lb + 1);
+  for (let j = 0; j <= lb; j++) prev[j] = j;
+
+  for (let i = 1; i <= la; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= lb; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,      // deletion
+        curr[j - 1] + 1,  // insertion
+        prev[j - 1] + cost // substitution
+      );
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[lb];
+}
+
+// How many edits we tolerate scales with word length, so a 3-letter name
+// doesn't accidentally match totally different 3-letter names.
+function allowedEdits(len) {
+  if (len <= 3) return 0;
+  if (len <= 6) return 1;
+  return 2;
+}
+
+function wordsMatch(a, b) {
+  if (a === b) return true;
+  const maxLen = Math.max(a.length, b.length);
+  if (Math.abs(a.length - b.length) > allowedEdits(maxLen)) return false;
+  return levenshtein(a, b) <= allowedEdits(maxLen);
+}
+
 let cachedImageList = null;
 
 export function getLocalImageList() {
@@ -134,7 +179,7 @@ async function processMessage(ctx, chatId, state, m) {
     for (let i = 0; i + winLen <= incomingWords.length; i++) {
       let ok = true;
       for (let k = 0; k < winLen; k++) {
-        if (incomingWords[i + k] !== answerWords[k]) { ok = false; break; }
+        if (!wordsMatch(incomingWords[i + k], answerWords[k])) { ok = false; break; }
       }
       if (ok) { hit = true; break; }
     }

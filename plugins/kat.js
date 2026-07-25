@@ -16,7 +16,7 @@ function loadWords() {
 
 const ALL_WORDS = loadWords();
 
-function normalizeText(text) {
+export function normalizeText(text) {
   if (!text) return '';
   return text
     .trim()
@@ -33,7 +33,7 @@ function normalizeText(text) {
     .replace(/\s+/g, ' ');          
 }
 
-function getRandomWords(count) {
+export function getRandomWords(count) {
   const n = ALL_WORDS.length;
   if (!n) return [];
   const take = Math.min(count, n);
@@ -53,6 +53,27 @@ function buildRemaining(normalizedWords) {
     remaining.set(w, (remaining.get(w) || 0) + 1);
   }
   return remaining;
+}
+
+// Maps a normalized word back to how it's actually spelled/displayed,
+// so feedback text shows real words instead of the stripped-down form.
+export function buildNormToOriginal(words, normalized) {
+  const map = new Map();
+  for (let i = 0; i < words.length; i++) {
+    if (!map.has(normalized[i])) map.set(normalized[i], words[i]);
+  }
+  return map;
+}
+
+// Builds the "اكتب:اسم,اسم" text for whatever a given player hasn't found yet.
+function buildRemainingText(state, player) {
+  const remaining = [];
+  for (const [key, count] of player.remaining.entries()) {
+    if (count <= 0) continue;
+    const display = state.normToOriginal.get(key) || key;
+    for (let c = 0; c < count; c++) remaining.push(display);
+  }
+  return `اكتب:${remaining.join(',')}`;
 }
 
 const registeredSocks = new WeakSet();
@@ -136,8 +157,11 @@ async function processMessage(ctx, chatId, state, m) {
     }
   }
 
+  // Instead of a ✅ react (which is slow to show and gives zero info about
+  // what's left), tell the player directly and instantly what's still missing.
   if (progressed && !justWon) {
-    ctx.sock.sendMessage(chatId, { react: { text: '✅', key: m.key } }).catch(() => {});
+    const remainingText = buildRemainingText(state, player);
+    ctx.sock.sendMessage(chatId, { text: remainingText }, { quoted: m }).catch(() => {});
   }
 
   if (!justWon) return;
@@ -159,6 +183,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.targetWords = nextWords;
   state.targetNormalized = nextNormalized;
   state.targetTotal = nextNormalized.length;
+  state.normToOriginal = buildNormToOriginal(nextWords, nextNormalized);
   state.players = {}; 
   
   const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*${nextWords.join(' ')}*`;
@@ -241,6 +266,7 @@ export default {
       targetCount: count,
       targetNormalized, 
       targetTotal: targetNormalized.length,
+      normToOriginal: buildNormToOriginal(targetWords, targetNormalized),
       players: {}, 
       startTime: process.hrtime.bigint(),
       scores: {},
