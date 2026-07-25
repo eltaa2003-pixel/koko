@@ -170,7 +170,11 @@ async function processMessage(ctx, chatId, state, m) {
   const winnerMention = `@${winnerJid.split('@')[0]}`;
   state.scores[winnerJid] = (state.scores[winnerJid] || 0) + 1;
 
-  await recordWin({ jid: winnerJid, game: 'صور', timeTaken, label: state.currentItem.answer, answeredCount: 1 });
+  try {
+    await recordWin({ jid: winnerJid, game: 'صور', timeTaken, label: state.currentItem.answer, answeredCount: 1 });
+  } catch (err) {
+    console.error('recordWin failed:', err);
+  }
 
   const list = getLocalImageList();
   const [nextItem] = pickRandom(list, 1, state.currentItem);

@@ -221,9 +221,13 @@ async function processMessage(ctx, chatId, state, m) {
 
     state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
+  try {
     await recordWin({ jid: senderJid, game: 'تع', timeTaken, label: state.currentQuestion, answeredCount: 3 });
+  } catch (err) {
+    console.error('recordWin failed:', err);
+  }
 
-    const nextQ = getRandomQuestion(recentTracker.getExcluded(chatId));
+  const nextQ = getRandomQuestion(recentTracker.getExcluded(chatId));
     if (!nextQ) {
       store.delete(chatId);
       ctx.sock.sendMessage(chatId, { text: 'خطأ: لم يتم العثور على أسئلة في فئة تع.' }).catch(() => {});

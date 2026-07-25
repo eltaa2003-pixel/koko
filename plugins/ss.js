@@ -236,7 +236,11 @@ async function processMessage(ctx, chatId, state, m) {
   const winnerMention = `@${senderJid.split('@')[0]}`;
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
-  await recordWin({ jid: senderJid, game: 'سس', timeTaken, label: state.currentQuestion, answeredCount: state.answerData.slotCount });
+  try {
+    await recordWin({ jid: senderJid, game: 'سس', timeTaken, label: state.currentQuestion, answeredCount: state.answerData.slotCount });
+  } catch (err) {
+    console.error('recordWin failed:', err);
+  }
 
   const nextQ = getRandomQuestion(recentTracker.getExcluded(chatId));
   if (!nextQ) {

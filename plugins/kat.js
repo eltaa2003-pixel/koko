@@ -184,7 +184,11 @@ async function processMessage(ctx, chatId, state, m) {
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
-  await recordWin({ jid: senderJid, game: 'كت', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
+  try {
+    await recordWin({ jid: senderJid, game: 'كت', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
+  } catch (err) {
+    console.error('recordWin failed:', err);
+  }
 
   const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
   const nextNormalized = nextWords.map(normalizeText);
