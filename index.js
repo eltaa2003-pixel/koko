@@ -16,6 +16,7 @@ import { loadPlugins } from './lib/loadPlugins.js';
 import { checkCooldown } from './lib/cooldown.js';
 import { getMessageText } from './lib/messageText.js';
 import { useMongoAuthState } from './lib/mongoAuth.js';
+import { seedFromFileIfNeeded } from './lib/gameData.js';
 
 import { PREFIX, DEFAULT_COOLDOWN } from './config.js';
 
@@ -32,6 +33,7 @@ app.listen(PORT, () => {
 
 async function start() {
   const { state, saveCreds } = await useMongoAuthState(process.env.MONGO_URL);
+  await seedFromFileIfNeeded();
   const { version } = await fetchLatestBaileysVersion();
   const { commands, count } = await loadPlugins(coreLogger);
 
