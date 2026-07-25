@@ -1,4 +1,4 @@
-import { getSpeedLeaderboardText } from '../lib/playerStats.js';
+import { getOverallLeaderboardText } from '../lib/playerStats.js';
 
 const GAMES = [
   ['كت', 'كت'],
@@ -9,8 +9,8 @@ const GAMES = [
 ];
 
 export default {
-  name: 'توب',
-  description: 'يعرض أفضل 3 لاعبين في كل الألعاب',
+  name: 'الافضل',
+  description: 'يعرض الأفضل (الأكثر فوزاً) في كل لعبة',
   cooldown: 5,
 
   async execute(ctx) {
@@ -18,15 +18,14 @@ export default {
     const allMentions = new Set();
 
     for (const [game, displayName] of GAMES) {
-      const result = await getSpeedLeaderboardText(game, displayName);
+      const result = await getOverallLeaderboardText(game, displayName);
       if (!result) continue;
-
       sections.push(result.text);
       result.mentions.forEach(m => allMentions.add(m));
     }
 
     if (!sections.length) {
-      await ctx.reply('لا توجد بيانات كافية لعرض المتصدرين بعد.');
+      await ctx.reply('لا توجد بيانات كافية بعد.');
       return;
     }
 
