@@ -10,7 +10,7 @@ const GAMES = [
 
 export default {
   name: 'الافضل',
-  description: 'يعرض الأفضل (الأكثر فوزاً) في كل لعبة',
+  description: 'يعرض الأفضل (متوسط وقت الرد وعدد الكلمات بالدقيقة) في كل لعبة',
   cooldown: 5,
 
   async execute(ctx) {
