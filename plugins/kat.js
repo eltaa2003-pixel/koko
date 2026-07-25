@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { recordWin } from '../lib/playerStats.js';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 
@@ -166,10 +167,12 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
-  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
+  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
+
+  await recordWin({ jid: senderJid, game: 'كت', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
 
   const nextWords = getRandomWords(state.targetCount);
   const nextNormalized = nextWords.map(normalizeText);
@@ -186,7 +189,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.normToOriginal = buildNormToOriginal(nextWords, nextNormalized);
   state.players = {}; 
   
-  const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*${nextWords.join(' ')}*`;
+  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
   ctx.sock.sendMessage(
     chatId,

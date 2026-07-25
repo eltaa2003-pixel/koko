@@ -3,6 +3,7 @@
 // decomposed into individual letters separated by spaces
 // (e.g. "ساسكي" -> "س ا س ك ي").
 import { getRandomWords, normalizeText } from './kat.js';
+import { recordWin } from '../lib/playerStats.js';
 
 export function buildLetterSeqs(normalizedWords) {
   return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' '));
@@ -114,10 +115,12 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
-  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
+  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
+
+  await recordWin({ jid: senderJid, game: 'تفكيك', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
 
   const nextWords = getRandomWords(state.targetCount);
   const nextNormalized = nextWords.map(normalizeText);
@@ -134,7 +137,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.targetTotal = nextWords.length;
   state.players = {};
 
-  const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*${nextWords.join(' ')}*`;
+  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
   ctx.sock.sendMessage(
     chatId,

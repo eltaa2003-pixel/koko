@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { recordWin } from '../lib/playerStats.js';
 
 const IMAGES_DIR = path.resolve('saved_images');
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
@@ -164,10 +165,12 @@ async function processMessage(ctx, chatId, state, m) {
   }
   if (!hit) return;
 
-  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
+  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
   const winnerJid = m.key.participant || m.key.remoteJid;
   const winnerMention = `@${winnerJid.split('@')[0]}`;
   state.scores[winnerJid] = (state.scores[winnerJid] || 0) + 1;
+
+  await recordWin({ jid: winnerJid, game: 'صور', timeTaken, label: state.currentItem.answer, answeredCount: 1 });
 
   const list = getLocalImageList();
   const [nextItem] = pickRandom(list, 1, state.currentItem);
@@ -184,7 +187,7 @@ async function processMessage(ctx, chatId, state, m) {
       chatId,
       {
         image: { url: nextItem.path },
-        caption: `+1 ${winnerMention} (${timeTaken}s)`,
+        caption: `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)`,
         mentions: [winnerJid],
         jpegThumbnail: null // Force Baileys to skip thumbnail generation
       },

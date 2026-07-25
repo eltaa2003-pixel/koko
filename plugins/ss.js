@@ -1,4 +1,5 @@
 import { loadCategory, saveAnswers } from '../lib/gameData.js';
+import { recordWin } from '../lib/playerStats.js';
 
 export const SS_POOL = await loadCategory('سس');
 
@@ -212,9 +213,11 @@ async function processMessage(ctx, chatId, state, m) {
   if (state.isTransitioning) return;
   state.isTransitioning = true;
 
-  const timeTaken = (Number(process.hrtime.bigint() - state.startTime) / 1e9).toFixed(3);
+  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
   const winnerMention = `@${senderJid.split('@')[0]}`;
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
+
+  await recordWin({ jid: senderJid, game: 'سس', timeTaken, label: state.currentQuestion, answeredCount: state.answerData.slotCount });
 
   const nextQ = getRandomQuestion();
   if (!nextQ) {
@@ -231,7 +234,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.answerData = buildAnswerData(nextQ.answers);
   state.playerProgress = {};
 
-  const replyText = `+1 ${winnerMention} (${timeTaken}s)\n\n*س/ ${nextQ.question}*`;
+  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*س/ ${nextQ.question}*`;
 
   ctx.sock.sendMessage(chatId, { text: replyText, mentions: [senderJid] }, { quoted: m })
     .then(() => {
