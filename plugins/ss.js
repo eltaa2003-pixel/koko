@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
@@ -336,6 +334,7 @@ export default {
     ctx.store.namespace('katGame').delete(ctx.chatId);
     ctx.store.namespace('picGame').delete(ctx.chatId);
     ctx.store.namespace('ta3Game').delete(ctx.chatId);
+    ctx.store.namespace('tafkikGame').delete(ctx.chatId);
 
     if (!SS_POOL.length) {
       await ctx.reply('علقت');

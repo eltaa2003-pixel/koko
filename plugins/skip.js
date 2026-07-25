@@ -2,6 +2,7 @@ import { getRandomQuestion, buildAnswersMap, pushHistory as pushTa3History } fro
 import { getLocalImageList, pickRandom } from './pic.js';
 import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory } from './ss.js';
 import { getRandomWords, normalizeText as normalizeKatText, buildNormToOriginal } from './kat.js';
+import { buildLetterSeqs } from './tafkik.js';
 
 export default {
   name: 'سكب',
@@ -61,6 +62,31 @@ export default {
       state.targetNormalized = nextNormalized;
       state.targetTotal = nextNormalized.length;
       state.normToOriginal = buildNormToOriginal(nextWords, nextNormalized);
+      state.players = {};
+      state.startTime = process.hrtime.bigint();
+
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      return;
+    }
+
+    const tafkikStore = ctx.store.namespace('tafkikGame');
+    if (tafkikStore.has(chatId)) {
+      const state = tafkikStore.get(chatId);
+      const correctAnswers = state.targetWords.join(' - ');
+
+      const nextWords = getRandomWords(state.targetCount);
+
+      if (!nextWords.length) {
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\nخطأ: لم يتم العثور على كلمات جديدة.`);
+        return;
+      }
+
+      const nextNormalized = nextWords.map(normalizeKatText);
+
+      state.targetWords = nextWords;
+      state.targetNormalized = nextNormalized;
+      state.targetLetterSeqs = buildLetterSeqs(nextNormalized);
+      state.targetTotal = nextWords.length;
       state.players = {};
       state.startTime = process.hrtime.bigint();
 

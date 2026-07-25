@@ -329,6 +329,7 @@ export default {
     ctx.store.namespace('katGame').delete(ctx.chatId);
     ctx.store.namespace('picGame').delete(ctx.chatId);
     ctx.store.namespace('ssGame').delete(ctx.chatId);
+    ctx.store.namespace('tafkikGame').delete(ctx.chatId);
 
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');
