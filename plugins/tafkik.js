@@ -5,7 +5,7 @@
 import { getRandomWords, normalizeText } from './kat.js';
 
 export function buildLetterSeqs(normalizedWords) {
-  return normalizedWords.map(w => Array.from(w));
+  return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' '));
 }
 
 const registeredSocks = new WeakSet();
@@ -146,8 +146,8 @@ async function processMessage(ctx, chatId, state, m) {
 }
 
 export default {
-  name: 'مفك',
-  aliases: ['سفك', 'تفكيك'],
+  name: 'متف',
+  aliases: ['ستف', 'تفكيك'],
   description: 'تفكيك: نفس بنك كلمات كت، بس لازم تكتب الكلمة مفكوكة حرف حرف مفصول بمسافة',
   cooldown: 0,
 
@@ -157,7 +157,7 @@ export default {
     const store = ctx.store.namespace('tafkikGame');
     const commandUsed = ctx.command.toLowerCase();
 
-    if (commandUsed === 'سفك') {
+    if (commandUsed === 'ستف') {
       if (!store.has(ctx.chatId)) {
         await ctx.reply('لا توجد لعبة تفكيك شغالة حالياً.');
         return;
@@ -188,7 +188,7 @@ export default {
     ctx.store.namespace('ssGame').delete(ctx.chatId);
 
     let count = 1;
-    const match = commandUsed.match(/^(?:مفك|تفكيك)(\d+)$/);
+    const match = commandUsed.match(/^(?:متف|تفكيك)(\d+)$/);
 
     if (match) {
       count = parseInt(match[1], 10);
