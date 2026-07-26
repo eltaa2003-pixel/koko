@@ -244,9 +244,14 @@ async function processMessage(ctx, chatId, state, m) {
 
   const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*س/ ${nextQ.question}*`;
 
+  // Start the clock as soon as the new question exists, not after WhatsApp
+  // confirms delivery of the reply. See kat.js for the full explanation —
+  // starting the timer inside the send's .then() let network latency decide
+  // whether a fast answer got clocked as slow (or vice versa).
+  state.startTime = process.hrtime.bigint();
+
   ctx.sock.sendMessage(chatId, { text: replyText, mentions: [senderJid] }, { quoted: m })
     .then(() => {
-      state.startTime = process.hrtime.bigint();
       state.isTransitioning = false;
     })
     .catch(err => {
@@ -342,6 +347,5 @@ export default {
     store.set(ctx.chatId, state);
 
     await ctx.reply(`*س/ ${firstQ.question}*`);
-    state.startTime = process.hrtime.bigint();
   }
 };

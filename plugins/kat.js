@@ -192,13 +192,22 @@ async function processMessage(ctx, chatId, state, m) {
   
   const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
+  // Start the clock the instant the new round exists, not after the reply
+  // finishes sending. Setting this inside the .then() below meant the timer
+  // for the new round only started once WhatsApp confirmed delivery of the
+  // *previous* round's "+1" message — a network round-trip of arbitrary
+  // length. Anyone who answered before that .then() fired still got timed
+  // against the *old* startTime, so a genuinely instant answer could be
+  // clocked at several seconds, while someone who happened to answer right
+  // after the .then() fired got timed from "now", clocking in at ~0s
+  // regardless of how slow they actually were.
+  state.startTime = process.hrtime.bigint();
+
   ctx.sock.sendMessage(
     chatId,
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
-  ).then(() => {
-    state.startTime = process.hrtime.bigint();
-  }).catch(err => console.error('كت game send error:', err));
+  ).catch(err => console.error('كت game send error:', err));
 }
 
 export default {
@@ -282,6 +291,5 @@ export default {
     store.set(ctx.chatId, state);
 
     await ctx.reply(`*${targetWords.join(' ')}*`);
-    state.startTime = process.hrtime.bigint();
   }
 };

@@ -238,7 +238,6 @@ async function processMessage(ctx, chatId, state, m) {
       },
       { quoted: m }
     ).then(() => {
-      state.startTime = process.hrtime.bigint();
       state.isTransitioning = false;
     }).catch(err => {
       console.error('تع game send error:', err);
@@ -335,6 +334,5 @@ export default {
     store.set(ctx.chatId, state);
 
     await ctx.reply(`*تع/3 ${firstQ.question}*`);
-    state.startTime = process.hrtime.bigint();
   }
 };
