@@ -175,8 +175,7 @@ async function processMessage(ctx, chatId, state, m) {
       {
         image: { url: nextItem.path },
         caption: `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)`,
-        mentions: [winnerJid],
-        jpegThumbnail: null // Force Baileys to skip thumbnail generation
+        mentions: [winnerJid]
       },
       { quoted: m }
     );
@@ -207,7 +206,6 @@ export default {
       try {
         await ctx.sock.sendMessage(ctx.chatId, { 
           image: { url: item.path },
-          jpegThumbnail: null // Skip processing
         });
       } catch (err) {
         console.error('random pic send error:', err);
@@ -260,7 +258,6 @@ export default {
     try {
       await ctx.sock.sendMessage(ctx.chatId, { 
         image: { url: firstItem.path },
-        jpegThumbnail: null // Skip processing
       });
       state.startTime = process.hrtime.bigint();
     } catch (err) {
