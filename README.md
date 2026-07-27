@@ -11,11 +11,10 @@ npm start
 ```
 
 A QR code prints in your terminal. Scan it from WhatsApp on your phone:
-**Linked devices → Link a device**. Once connected, your session is saved in
-`auth_info/` so you won't need to re-scan on restart (delete that folder to
+**Linked devices → Link a device**.
+ *Once connected,* 
+  ## your session is saved in MongoDB so you won't need to re-scan on restart (delete that folder to
 force a fresh login).
-
-Try it: send `.ping` or `.help` to the linked number from any chat.
 
 ## Add a plugin
 
