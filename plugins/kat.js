@@ -202,8 +202,8 @@ async function processMessage(ctx, chatId, state, m) {
   // clocked at several seconds, while someone who happened to answer right
   // after the .then() fired got timed from "now", clocking in at ~0s
   // regardless of how slow they actually were.
-  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
+  const sendStart = state.startTime;
 
   ctx.sock.sendMessage(
     chatId,

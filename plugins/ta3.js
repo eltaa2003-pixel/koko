@@ -227,8 +227,8 @@ async function processMessage(ctx, chatId, state, m) {
     state.answersMap = buildAnswersMap(nextQ.answers);
     state.answers = nextQ.answers;
     state.playerProgress = {};
-    const sendStart = state.startTime;
     state.startTime = process.hrtime.bigint();
+    const sendStart = state.startTime;
 
     const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*تع/3 ${nextQ.question}*`;
 

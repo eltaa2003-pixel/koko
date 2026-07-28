@@ -249,8 +249,8 @@ async function processMessage(ctx, chatId, state, m) {
   // confirms delivery of the reply. See kat.js for the full explanation —
   // starting the timer inside the send's .then() let network latency decide
   // whether a fast answer got clocked as slow (or vice versa).
-  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
+  const sendStart = state.startTime;
 
   ctx.sock.sendMessage(chatId, { text: replyText, mentions: [senderJid] }, { quoted: m })
     .then(() => {

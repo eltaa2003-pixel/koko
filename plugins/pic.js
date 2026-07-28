@@ -170,8 +170,8 @@ async function processMessage(ctx, chatId, state, m) {
   state.currentItem = nextItem;
   state.answerVariants = nextItem.answerVariants;
 
-  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
+  const sendStart = state.startTime;
 
   ctx.sock.sendMessage(
     chatId,

@@ -149,8 +149,8 @@ async function processMessage(ctx, chatId, state, m) {
 
   const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
-  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
+  const sendStart = state.startTime;
 
   ctx.sock.sendMessage(
     chatId,
