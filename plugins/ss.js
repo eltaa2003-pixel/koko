@@ -215,7 +215,8 @@ async function processMessage(ctx, chatId, state, m) {
   if (state.isTransitioning) return;
   state.isTransitioning = true;
 
-  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
   const winnerMention = `@${senderJid.split('@')[0]}`;
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
@@ -248,10 +249,12 @@ async function processMessage(ctx, chatId, state, m) {
   // confirms delivery of the reply. See kat.js for the full explanation —
   // starting the timer inside the send's .then() let network latency decide
   // whether a fast answer got clocked as slow (or vice versa).
+  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
 
   ctx.sock.sendMessage(chatId, { text: replyText, mentions: [senderJid] }, { quoted: m })
     .then(() => {
+      state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
       state.isTransitioning = false;
     })
     .catch(err => {

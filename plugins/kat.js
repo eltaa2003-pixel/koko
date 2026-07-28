@@ -163,7 +163,8 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
-  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -201,13 +202,18 @@ async function processMessage(ctx, chatId, state, m) {
   // clocked at several seconds, while someone who happened to answer right
   // after the .then() fired got timed from "now", clocking in at ~0s
   // regardless of how slow they actually were.
+  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
 
   ctx.sock.sendMessage(
     chatId,
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
-  ).catch(err => console.error('كت game send error:', err));
+  ).then(() => {
+    state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
+  }).catch(err => {
+    console.error('كت game send error:', err);
+  });
 }
 
 export default {

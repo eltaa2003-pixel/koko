@@ -148,7 +148,8 @@ async function processMessage(ctx, chatId, state, m) {
   }
   if (!hit) return;
 
-  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
   const winnerJid = m.key.participant || m.key.remoteJid;
   const winnerMention = `@${winnerJid.split('@')[0]}`;
   state.scores[winnerJid] = (state.scores[winnerJid] || 0) + 1;
@@ -169,20 +170,22 @@ async function processMessage(ctx, chatId, state, m) {
   state.currentItem = nextItem;
   state.answerVariants = nextItem.answerVariants;
 
-  try {
-    await ctx.sock.sendMessage(
-      chatId,
-      {
-        image: { url: nextItem.path },
-        caption: `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)`,
-        mentions: [winnerJid]
-      },
-      { quoted: m }
-    );
-    state.startTime = process.hrtime.bigint();
-  } catch (err) {
+  const sendStart = state.startTime;
+  state.startTime = process.hrtime.bigint();
+
+  ctx.sock.sendMessage(
+    chatId,
+    {
+      image: { url: nextItem.path },
+      caption: `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)`,
+      mentions: [winnerJid]
+    },
+    { quoted: m }
+  ).then(() => {
+    state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
+  }).catch(err => {
     console.error('صورة game send error:', err);
-  }
+  });
 }
 
 export default {

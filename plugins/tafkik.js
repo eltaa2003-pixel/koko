@@ -119,7 +119,8 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
-  const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -148,15 +149,18 @@ async function processMessage(ctx, chatId, state, m) {
 
   const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
-  // Start the clock as soon as the new round exists, not after WhatsApp
-  // confirms delivery. See kat.js for the full explanation.
+  const sendStart = state.startTime;
   state.startTime = process.hrtime.bigint();
 
   ctx.sock.sendMessage(
     chatId,
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
-  ).catch(err => console.error('تفكيك game send error:', err));
+  ).then(() => {
+    state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
+  }).catch(err => {
+    console.error('تفكيك game send error:', err);
+  });
 }
 
 export default {

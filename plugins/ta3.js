@@ -199,7 +199,8 @@ async function processMessage(ctx, chatId, state, m) {
     if (state.isTransitioning) return;
     state.isTransitioning = true;
 
-    const timeTaken = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+    const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+    const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
     const winnerMention = `@${senderJid.split('@')[0]}`;
 
     state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -226,6 +227,7 @@ async function processMessage(ctx, chatId, state, m) {
     state.answersMap = buildAnswersMap(nextQ.answers);
     state.answers = nextQ.answers;
     state.playerProgress = {};
+    const sendStart = state.startTime;
     state.startTime = process.hrtime.bigint();
 
     const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*تع/3 ${nextQ.question}*`;
@@ -238,6 +240,7 @@ async function processMessage(ctx, chatId, state, m) {
       },
       { quoted: m }
     ).then(() => {
+      state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
       state.isTransitioning = false;
     }).catch(err => {
       console.error('تع game send error:', err);
