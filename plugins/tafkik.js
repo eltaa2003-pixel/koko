@@ -205,7 +205,7 @@ export default {
     ctx.store.namespace('reverseGame').delete(ctx.chatId);
     ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
 
-    let count = Math.floor(Math.random() * 10) + 1; // random 1-10 if no count given
+    let count = 1; // default 1, only change when user types a number
 
     if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
       count = parseInt(ctx.args[0], 10);

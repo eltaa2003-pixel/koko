@@ -188,7 +188,7 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
-    let count = Math.floor(Math.random() * 10) + 1;
+    let count = 1; // default 1, only change when user types a number
 
     if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
       count = parseInt(ctx.args[0], 10);
