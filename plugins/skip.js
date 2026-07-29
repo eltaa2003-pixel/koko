@@ -43,7 +43,9 @@ export default {
       pushTa3History(ctx, chatId, { question: nextQ.question, answers: nextQ.answers });
 
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
-      await ctx.reply(`*تع/3 ${nextQ.question}*`);
+      const nextMsg = await ctx.reply(`*تع/3 ${nextQ.question}*`);
+      state.roundMsgKey = nextMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - state.startTime) / 1e9);
 
       state.isTransitioning = false;
       return;
@@ -70,8 +72,11 @@ export default {
       state.normToOriginal = buildNormToOriginal(nextWords, nextNormalized);
       state.players = {};
       state.startTime = process.hrtime.bigint();
+      const sendStart = state.startTime;
 
-      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      const sentMsg = await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      state.roundMsgKey = sentMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - sendStart) / 1e9);
       return;
     }
 
@@ -96,8 +101,11 @@ export default {
       state.targetTotal = nextWords.length;
       state.players = {};
       state.startTime = process.hrtime.bigint();
+      const sendStart = state.startTime;
 
-      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      const sentMsg = await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      state.roundMsgKey = sentMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - sendStart) / 1e9);
       return;
     }
 
@@ -120,7 +128,11 @@ export default {
       state.normToOriginal = buildNormToOriginal(nextWords, nextReversed);
       state.players = {};
       state.startTime = process.hrtime.bigint();
-      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      const sendStart = state.startTime;
+
+      const sentMsg = await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      state.roundMsgKey = sentMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - sendStart) / 1e9);
       return;
     }
 
@@ -142,7 +154,11 @@ export default {
       state.targetTotal = nextWords.length;
       state.players = {};
       state.startTime = process.hrtime.bigint();
-      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      const sendStart = state.startTime;
+
+      const sentMsg = await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      state.roundMsgKey = sentMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - sendStart) / 1e9);
       return;
     }
 
@@ -164,12 +180,15 @@ export default {
 
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${correctAnswer}`);
 
+      state.startTime = process.hrtime.bigint();
+      const sendStart = state.startTime;
+
       try {
         await ctx.sock.sendMessage(chatId, {
           image: { url: nextItem.path },
           jpegThumbnail: null
         });
-        state.startTime = process.hrtime.bigint();
+        state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
       } catch (err) {
         console.error('صورة game skip send error:', err);
       }
@@ -203,7 +222,9 @@ export default {
       pushSSHistory(ctx, chatId, { question: nextQ.question, answersRaw: nextQ.answers });
 
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n${answersList}`);
-      await ctx.reply(`*س/ ${nextQ.question}*`);
+      const nextMsg = await ctx.reply(`*س/ ${nextQ.question}*`);
+      state.roundMsgKey = nextMsg.key;
+      state.sendLatencyPromise = Promise.resolve(Number(process.hrtime.bigint() - state.startTime) / 1e9);
 
       state.isTransitioning = false;
       return;
