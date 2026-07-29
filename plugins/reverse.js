@@ -1,4 +1,5 @@
 import { getRandomWords, buildNormToOriginal, recentTracker as reverseTracker } from './kat.js';
+export { reverseTracker as recentTracker };
 import { recordWin } from '../lib/playerStats.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
 
