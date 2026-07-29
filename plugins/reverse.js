@@ -142,7 +142,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.normToOriginal = buildNormToOriginal(nextWords, nextReversed);
   state.players = {};
 
-  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextReversed.join(' ')}*`;
+  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
 
   state.startTime = process.hrtime.bigint();
   const sendStart = state.startTime;
@@ -234,6 +234,6 @@ export default {
 
     store.set(ctx.chatId, state);
 
-    await ctx.reply(`*${targetReversed.join(' ')}*`);
+    await ctx.reply(`*${targetWords.join(' ')}*`);
   }
 };
