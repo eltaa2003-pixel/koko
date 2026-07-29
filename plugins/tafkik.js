@@ -200,18 +200,11 @@ export default {
       return;
     }
 
-    ctx.store.namespace('katGame').delete(ctx.chatId);
-    ctx.store.namespace('ta3Game').delete(ctx.chatId);
-    ctx.store.namespace('picGame').delete(ctx.chatId);
-    ctx.store.namespace('ssGame').delete(ctx.chatId);
-    ctx.store.namespace('tournamentGame').delete(ctx.chatId);
+    ctx.store.stopAllGames(ctx);
 
-    let count = 1;
-    const match = commandUsed.match(/^(?:متف|تفكيك)(\d+)$/);
+    let count = Math.floor(Math.random() * 10) + 1; // random 1-10 if no count given
 
-    if (match) {
-      count = parseInt(match[1], 10);
-    } else if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
+    if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
       count = parseInt(ctx.args[0], 10);
     }
 

@@ -23,6 +23,13 @@ import { normalizeLenient, normalizeStrict } from '../lib/normalizeArabic.js';
 const SECTION_ORDER = ['tafkik', 'pic', 'mixed', 'kat'];
 const FIXED_TARGET = 5;
 
+const SECTION_LABELS = {
+  tafkik: 'تفكيك',
+  pic: 'صور',
+  mixed: 'سع',
+  kat: 'كت'
+};
+
 function randomTarget() {
   return 2 + Math.floor(Math.random() * 5); // 2..6, hidden from players
 }
@@ -46,7 +53,7 @@ function pickKatQuestion(chatId) {
   const word = words[0];
   const norm = normalizeLenient(word);
   katRecentTracker.record(chatId, [norm]);
-  return { type: 'kat', tokens: norm.split(' ').filter(Boolean), display: `*${word}*` };
+  return { type: 'kat', tokens: norm.split(' ').filter(Boolean), display: `*كت/ ${word}*` };
 }
 
 function pickTafkikQuestion(chatId) {
@@ -67,7 +74,7 @@ function pickMixedQuestion(chatId, subGame) {
   const q = ta3GetRandomQuestion(ta3RecentTracker.getExcluded(chatId));
   if (!q) return null;
   ta3RecentTracker.record(chatId, [normalizeStrict(q.question)]);
-  return { type: 'mixed', subGame: 'ta3', answersMap: buildAnswersMap(q.answers), players: {}, display: `*سع/ ${q.question}*` };
+  return { type: 'mixed', subGame: 'ta3', answersMap: buildAnswersMap(q.answers), players: {}, display: `*سع/3 ${q.question}*` };
 }
 
 function pickPicQuestion(excludeItem) {
@@ -131,11 +138,19 @@ function ensureGlobalListener(ctx) {
     if (type !== 'notify' && type !== 'append') return;
 
     const store = ctx.store.namespace('tournamentGame');
+    const pendingStore = ctx.store.namespace('tournamentPendingStart');
 
     for (const m of messages) {
       if (!m.message || m.key.fromMe) continue;
 
       const chatId = m.key.remoteJid;
+
+      const pending = pendingStore.get(chatId);
+      if (pending) {
+        handlePendingStart(ctx, chatId, pending, m).catch(err => console.error('بطولة pending start error:', err));
+        continue;
+      }
+
       const state = store.get(chatId);
       if (!state) continue;
 
@@ -144,6 +159,53 @@ function ensureGlobalListener(ctx) {
         .catch(err => console.error('بطولة processing error:', err));
     }
   });
+}
+
+async function handlePendingStart(ctx, chatId, pending, m) {
+  const pendingStore = ctx.store.namespace('tournamentPendingStart');
+
+  if (process.hrtime.bigint() - pending.timestamp > 120000000000000n) {
+    pendingStore.delete(chatId);
+    await ctx.sock.sendMessage(chatId, { text: 'انتهت المهلة. أرسل .بدء مجدداً إذا أردت.' }, { quoted: m }).catch(() => {});
+    return;
+  }
+
+  const text = m.message?.conversation || m.message?.extendedTextMessage?.text || '';
+  if (!text) return;
+
+  const target = parseInt(text.trim(), 10);
+  if (!Number.isInteger(target) || target < 1) {
+    await ctx.sock.sendMessage(chatId, { text: 'أرسل رقماً صحيحاً أكبر من 0.' }, { quoted: m }).catch(() => {});
+    return;
+  }
+
+  pendingStore.delete(chatId);
+
+  const sections = SECTION_ORDER.slice();
+  const current = initSection(sections[0], chatId);
+
+  if (!current) {
+    await ctx.sock.sendMessage(chatId, { text: 'فيه غلط' }).catch(() => {});
+    return;
+  }
+
+  const state = {
+    mode: 'fixed',
+    sections,
+    sectionIndex: 0,
+    sectionTarget: target,
+    sectionScores: {},
+    scores: {},
+    current,
+    queue: Promise.resolve(),
+    isTransitioning: false
+  };
+
+  ctx.store.namespace('tournamentGame').set(chatId, state);
+
+  await ctx.sock.sendMessage(chatId, { text: `القسم الأول: ${SECTION_LABELS[sections[0]]}` }).catch(() => {});
+  const content = buildSendContent(current, '', []);
+  await ctx.sock.sendMessage(chatId, content, { quoted: m }).catch(() => {});
 }
 
 async function processMessage(ctx, chatId, state, m) {
@@ -230,6 +292,7 @@ async function processMessage(ctx, chatId, state, m) {
 
     state.sectionScores = {};
     state.sectionTarget = state.mode === 'random' ? randomTarget() : FIXED_TARGET;
+    await ctx.sock.sendMessage(chatId, { text: `القسم القادم: ${SECTION_LABELS[state.sections[state.sectionIndex]]}` }).catch(() => {});
     nextCurrent = initSection(state.sections[state.sectionIndex], chatId);
   } else {
     nextCurrent = nextQuestionSameSection(chatId, current);
@@ -291,17 +354,21 @@ export default {
     }
 
     if (commandUsed !== 'بدء' && commandUsed !== 'بدا') {
-      await ctx.reply('استخدم .بدء (كل خمس نقاط تتغير) أو .بدا (كل نقطة نغير فقرة) لبدء البطولة، أو .سبطولة لإيقافها.');
+      await ctx.reply('استخدم .بدء (نقاط ثابتة تحددها) أو .بدا (نقاط عشوائية مخفية) لبدء البطولة، أو .سبطولة لإيقافها.');
       return;
     }
 
-    ctx.store.namespace('katGame').delete(ctx.chatId);
-    ctx.store.namespace('tafkikGame').delete(ctx.chatId);
-    ctx.store.namespace('ssGame').delete(ctx.chatId);
-    ctx.store.namespace('ta3Game').delete(ctx.chatId);
-    ctx.store.namespace('picGame').delete(ctx.chatId);
+    ctx.store.stopAllGames(ctx);
 
-    const mode = commandUsed === 'بدء' ? 'fixed' : 'random';
+    if (commandUsed === 'بدء') {
+      ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {
+        timestamp: process.hrtime.bigint()
+      });
+      await ctx.reply('كم نقطة تريد أن تكون خط النهاية لكل قسم؟ أرسل رقماً.');
+      return;
+    }
+
+    // .بدا — random mode keeps its hidden per-section target, no question needed
     const sections = SECTION_ORDER.slice();
     const current = initSection(sections[0], ctx.chatId);
 
@@ -311,10 +378,10 @@ export default {
     }
 
     const state = {
-      mode,
+      mode: 'random',
       sections,
       sectionIndex: 0,
-      sectionTarget: mode === 'random' ? randomTarget() : FIXED_TARGET,
+      sectionTarget: randomTarget(),
       sectionScores: {},
       scores: {},
       current,
@@ -324,6 +391,7 @@ export default {
 
     store.set(ctx.chatId, state);
 
+    await ctx.reply(`القسم الأول: ${SECTION_LABELS[sections[0]]}`);
     const content = buildSendContent(current, '', []);
     await ctx.sock.sendMessage(ctx.chatId, content, { quoted: ctx.msg });
   }

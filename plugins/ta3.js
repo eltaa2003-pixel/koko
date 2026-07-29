@@ -306,11 +306,7 @@ export default {
       return;
     }
 
-    ctx.store.namespace('katGame').delete(ctx.chatId);
-    ctx.store.namespace('picGame').delete(ctx.chatId);
-    ctx.store.namespace('ssGame').delete(ctx.chatId);
-    ctx.store.namespace('tafkikGame').delete(ctx.chatId);
-    ctx.store.namespace('tournamentGame').delete(ctx.chatId);
+    ctx.store.stopAllGames(ctx);
 
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');

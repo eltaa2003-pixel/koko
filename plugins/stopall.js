@@ -9,7 +9,9 @@ export default {
     let stoppedAny = false;
 
     const games = [
-      { id: 'katGame', name: 'كت/تفكيك' },
+      { id: 'katGame', name: 'كت' },
+      { id: 'tafkikGame', name: 'تفكيك' },
+      { id: 'tournamentGame', name: 'بطولة' },
       { id: 'ta3Game', name: 'تع/3' },
       { id: 'picGame', name: 'الصور' },
       { id: 'ssGame', name: 'س/سس' }
