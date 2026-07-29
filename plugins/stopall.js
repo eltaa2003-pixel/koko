@@ -14,7 +14,9 @@ export default {
       { id: 'tournamentGame', name: 'بطولة' },
       { id: 'ta3Game', name: 'تع/3' },
       { id: 'picGame', name: 'الصور' },
-      { id: 'ssGame', name: 'س/سس' }
+      { id: 'ssGame', name: 'س/سس' },
+      { id: 'reverseGame', name: 'عكس' },
+      { id: 'reverseTafkikGame', name: 'عكس تفكيك' }
     ];
 
     for (const game of games) {

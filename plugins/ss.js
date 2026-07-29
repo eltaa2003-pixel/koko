@@ -321,6 +321,9 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
+    ctx.store.namespace('reverseGame').delete(ctx.chatId);
+    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+
     if (!SS_POOL.length) {
       await ctx.reply('علقت');
       return;

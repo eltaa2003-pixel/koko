@@ -308,6 +308,9 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
+    ctx.store.namespace('reverseGame').delete(ctx.chatId);
+    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');
       return;

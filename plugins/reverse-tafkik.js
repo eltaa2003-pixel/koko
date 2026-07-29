@@ -1,7 +1,3 @@
-// تفكيك — same word pool as كت, but the win condition is reversed:
-// the bot shows the word normally, and the player has to type it back
-// decomposed into individual letters separated by spaces
-// (e.g. "ساسكي" -> "س ا س ك ي").
 import { getRandomWords } from './kat.js';
 import { recordWin } from '../lib/playerStats.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
@@ -9,8 +5,8 @@ import { normalizeLenient } from '../lib/normalizeArabic.js';
 
 export const recentTracker = makeRecentTracker();
 
-export function buildLetterSeqs(normalizedWords) {
-  return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' '));
+export function buildReversedLetterSeqs(normalizedWords) {
+  return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' ').reverse());
 }
 
 const registeredSocks = new WeakSet();
@@ -22,7 +18,7 @@ function ensureGlobalListener(ctx) {
   ctx.sock.ev.on('messages.upsert', ({ messages, type }) => {
     if (type !== 'notify' && type !== 'append') return;
 
-    const store = ctx.store.namespace('tafkikGame');
+    const store = ctx.store.namespace('reverseTafkikGame');
 
     for (const m of messages) {
       if (!m.message || m.key.fromMe) continue;
@@ -33,13 +29,13 @@ function ensureGlobalListener(ctx) {
 
       state.queue = state.queue
         .then(() => processMessage(ctx, chatId, state, m))
-        .catch(err => console.error('تفكيك game processing error:', err));
+        .catch(err => console.error('معكستف game processing error:', err));
     }
   });
 }
 
 async function processMessage(ctx, chatId, state, m) {
-  const store = ctx.store.namespace('tafkikGame');
+  const store = ctx.store.namespace('reverseTafkikGame');
   if (store.get(chatId) !== state) return;
 
   const text =
@@ -51,11 +47,6 @@ async function processMessage(ctx, chatId, state, m) {
   if (!text) return;
 
   const normInput = normalizeLenient(text);
-  // Every run of Arabic letters becomes its own token. A properly spaced
-  // answer ("س ا س ك ي") produces one token per letter; a glued answer
-  // ("ساسكي") produces one multi-letter token, which can never equal a
-  // single target letter — so this naturally enforces "must be spaced out"
-  // without any extra checks.
   const incomingWords = normInput.split(/[^\u0621-\u064A]+/).filter(Boolean);
   if (incomingWords.length === 0) return;
 
@@ -74,9 +65,6 @@ async function processMessage(ctx, chatId, state, m) {
   let justWon = false;
   let i = 0;
 
-  // Unsolved word indices, longest letter-sequence first, so a longer word
-  // gets first claim on a matching run of letters (avoids a short word's
-  // letters "stealing" a match that's actually the start of a longer one).
   const unsolvedIndices = () =>
     state.targetLetterSeqs
       .map((_, idx) => idx)
@@ -110,8 +98,6 @@ async function processMessage(ctx, chatId, state, m) {
     }
   }
 
-  // Instead of a checkmark: tell the player exactly which words they still
-  // need to spell out, in normal spelling.
   if (progressed && !justWon) {
     const remaining = state.targetWords.filter((_, idx) => !player.solved.has(idx));
     ctx.sock.sendMessage(chatId, { text: `اكتب:${remaining.join(',')}` }, { quoted: m }).catch(() => {});
@@ -126,7 +112,7 @@ async function processMessage(ctx, chatId, state, m) {
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
   try {
-    await recordWin({ jid: senderJid, game: 'تفكيك', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
+    await recordWin({ jid: senderJid, game: 'عكس تفكيك', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
   } catch (err) {
     console.error('recordWin failed:', err);
   }
@@ -143,7 +129,7 @@ async function processMessage(ctx, chatId, state, m) {
 
   state.targetWords = nextWords;
   state.targetNormalized = nextNormalized;
-  state.targetLetterSeqs = buildLetterSeqs(nextNormalized);
+  state.targetLetterSeqs = buildReversedLetterSeqs(nextNormalized);
   state.targetTotal = nextWords.length;
   state.players = {};
 
@@ -159,25 +145,25 @@ async function processMessage(ctx, chatId, state, m) {
   ).then(() => {
     state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
   }).catch(err => {
-    console.error('تفكيك game send error:', err);
+    console.error('معكستف game send error:', err);
   });
 }
 
 export default {
-  name: 'متف',
-  aliases: ['ستف', 'تفكيك'],
-  description: 'تفكيك: نفس بنك كلمات كت، بس لازم تكتب الكلمة مفكوكة حرف حرف مفصول بمسافة',
+  name: 'معكستف',
+  aliases: ['سعكستف'],
+  description: 'معكستف: نفس تفكيك، بس لازم تكتب الحروف معكوسة',
   cooldown: 0,
 
   async execute(ctx) {
     ensureGlobalListener(ctx);
 
-    const store = ctx.store.namespace('tafkikGame');
+    const store = ctx.store.namespace('reverseTafkikGame');
     const commandUsed = ctx.command.toLowerCase();
 
-    if (commandUsed === 'ستف') {
+    if (commandUsed === 'سعكستف') {
       if (!store.has(ctx.chatId)) {
-        await ctx.reply('لا توجد لعبة تفكيك شغالة حالياً.');
+        await ctx.reply('لا توجد لعبة معكستف شغالة حالياً.');
         return;
       }
       const oldState = store.get(ctx.chatId);
@@ -202,10 +188,7 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
-
-    let count = Math.floor(Math.random() * 10) + 1; // random 1-10 if no count given
+    let count = Math.floor(Math.random() * 10) + 1;
 
     if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
       count = parseInt(ctx.args[0], 10);
@@ -230,7 +213,7 @@ export default {
       targetWords,
       targetCount: count,
       targetNormalized,
-      targetLetterSeqs: buildLetterSeqs(targetNormalized),
+      targetLetterSeqs: buildReversedLetterSeqs(targetNormalized),
       targetTotal: targetWords.length,
       players: {},
       startTime: process.hrtime.bigint(),

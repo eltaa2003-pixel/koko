@@ -360,6 +360,9 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
+    ctx.store.namespace('reverseGame').delete(ctx.chatId);
+    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+
     if (commandUsed === 'بدء') {
       ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {
         timestamp: process.hrtime.bigint()

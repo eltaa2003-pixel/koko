@@ -1,16 +1,27 @@
-// تفكيك — same word pool as كت, but the win condition is reversed:
-// the bot shows the word normally, and the player has to type it back
-// decomposed into individual letters separated by spaces
-// (e.g. "ساسكي" -> "س ا س ك ي").
-import { getRandomWords } from './kat.js';
+import { getRandomWords, buildNormToOriginal, recentTracker as reverseTracker } from './kat.js';
 import { recordWin } from '../lib/playerStats.js';
-import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
 
-export const recentTracker = makeRecentTracker();
+export function reverseNormalized(text) {
+  return text.split('').reverse().join('');
+}
 
-export function buildLetterSeqs(normalizedWords) {
-  return normalizedWords.map(w => Array.from(w).filter(ch => ch !== ' '));
+function buildRemaining(normalizedWords) {
+  const remaining = new Map();
+  for (const w of normalizedWords) {
+    remaining.set(w, (remaining.get(w) || 0) + 1);
+  }
+  return remaining;
+}
+
+function buildRemainingText(state, player) {
+  const remaining = [];
+  for (const [key, count] of player.remaining.entries()) {
+    if (count <= 0) continue;
+    const display = state.normToOriginal.get(key) || key;
+    for (let c = 0; c < count; c++) remaining.push(display);
+  }
+  return `اكتب:${remaining.join(',')}`;
 }
 
 const registeredSocks = new WeakSet();
@@ -22,7 +33,7 @@ function ensureGlobalListener(ctx) {
   ctx.sock.ev.on('messages.upsert', ({ messages, type }) => {
     if (type !== 'notify' && type !== 'append') return;
 
-    const store = ctx.store.namespace('tafkikGame');
+    const store = ctx.store.namespace('reverseGame');
 
     for (const m of messages) {
       if (!m.message || m.key.fromMe) continue;
@@ -33,13 +44,13 @@ function ensureGlobalListener(ctx) {
 
       state.queue = state.queue
         .then(() => processMessage(ctx, chatId, state, m))
-        .catch(err => console.error('تفكيك game processing error:', err));
+        .catch(err => console.error('معكس game processing error:', err));
     }
   });
 }
 
 async function processMessage(ctx, chatId, state, m) {
-  const store = ctx.store.namespace('tafkikGame');
+  const store = ctx.store.namespace('reverseGame');
   if (store.get(chatId) !== state) return;
 
   const text =
@@ -48,14 +59,10 @@ async function processMessage(ctx, chatId, state, m) {
     m.message?.imageMessage?.caption ||
     m.message?.videoMessage?.caption ||
     '';
+
   if (!text) return;
 
   const normInput = normalizeLenient(text);
-  // Every run of Arabic letters becomes its own token. A properly spaced
-  // answer ("س ا س ك ي") produces one token per letter; a glued answer
-  // ("ساسكي") produces one multi-letter token, which can never equal a
-  // single target letter — so this naturally enforces "must be spaced out"
-  // without any extra checks.
   const incomingWords = normInput.split(/[^\u0621-\u064A]+/).filter(Boolean);
   if (incomingWords.length === 0) return;
 
@@ -64,8 +71,8 @@ async function processMessage(ctx, chatId, state, m) {
   if (!state.players) state.players = {};
   if (!state.players[senderJid]) {
     state.players[senderJid] = {
-      solved: new Set(),
-      solvedCount: 0
+      remaining: buildRemaining(state.targetReversed),
+      matchedCount: 0
     };
   }
 
@@ -74,47 +81,33 @@ async function processMessage(ctx, chatId, state, m) {
   let justWon = false;
   let i = 0;
 
-  // Unsolved word indices, longest letter-sequence first, so a longer word
-  // gets first claim on a matching run of letters (avoids a short word's
-  // letters "stealing" a match that's actually the start of a longer one).
-  const unsolvedIndices = () =>
-    state.targetLetterSeqs
-      .map((_, idx) => idx)
-      .filter(idx => !player.solved.has(idx))
-      .sort((a, b) => state.targetLetterSeqs[b].length - state.targetLetterSeqs[a].length);
-
-  while (i < incomingWords.length && player.solvedCount < state.targetTotal) {
-    let matchedIdx = -1;
-    for (const idx of unsolvedIndices()) {
-      const letters = state.targetLetterSeqs[idx];
-      const L = letters.length;
-      if (i + L > incomingWords.length) continue;
-      let ok = true;
-      for (let k = 0; k < L; k++) {
-        if (incomingWords[i + k] !== letters[k]) { ok = false; break; }
-      }
-      if (ok) { matchedIdx = idx; break; }
-    }
-
-    if (matchedIdx !== -1) {
-      player.solved.add(matchedIdx);
-      player.solvedCount++;
-      i += state.targetLetterSeqs[matchedIdx].length;
-      progressed = true;
-      if (player.solvedCount === state.targetTotal) {
-        justWon = true;
+  while (i < incomingWords.length && player.matchedCount < state.targetTotal) {
+    let matched = false;
+    for (let n = incomingWords.length - i; n > 0; n--) {
+      const candidate = incomingWords.slice(i, i + n).join(' ');
+      const left = player.remaining.get(candidate);
+      if (left && left > 0) {
+        player.remaining.set(candidate, left - 1);
+        player.matchedCount++;
+        i += n;
+        matched = true;
+        if (player.matchedCount === state.targetTotal) {
+          justWon = true;
+          break;
+        }
         break;
       }
-    } else {
+    }
+    if (!matched) {
       i++;
+    } else {
+      progressed = true;
     }
   }
 
-  // Instead of a checkmark: tell the player exactly which words they still
-  // need to spell out, in normal spelling.
   if (progressed && !justWon) {
-    const remaining = state.targetWords.filter((_, idx) => !player.solved.has(idx));
-    ctx.sock.sendMessage(chatId, { text: `اكتب:${remaining.join(',')}` }, { quoted: m }).catch(() => {});
+    const remainingText = buildRemainingText(state, player);
+    ctx.sock.sendMessage(chatId, { text: remainingText }, { quoted: m }).catch(() => {});
   }
 
   if (!justWon) return;
@@ -126,14 +119,15 @@ async function processMessage(ctx, chatId, state, m) {
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
 
   try {
-    await recordWin({ jid: senderJid, game: 'تفكيك', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
+    await recordWin({ jid: senderJid, game: 'عكس', timeTaken, label: state.targetWords.join(' '), answeredCount: state.targetTotal });
   } catch (err) {
     console.error('recordWin failed:', err);
   }
 
-  const nextWords = getRandomWords(state.targetCount, recentTracker.getExcluded(chatId));
+  const nextWords = getRandomWords(state.targetCount, reverseTracker.getExcluded(chatId));
   const nextNormalized = nextWords.map(normalizeLenient);
-  recentTracker.record(chatId, nextNormalized);
+  const nextReversed = nextNormalized.map(reverseNormalized);
+  reverseTracker.record(chatId, nextNormalized);
 
   if (nextWords.length < state.targetCount) {
     ctx.sock.sendMessage(chatId, {
@@ -143,11 +137,12 @@ async function processMessage(ctx, chatId, state, m) {
 
   state.targetWords = nextWords;
   state.targetNormalized = nextNormalized;
-  state.targetLetterSeqs = buildLetterSeqs(nextNormalized);
-  state.targetTotal = nextWords.length;
+  state.targetReversed = nextReversed;
+  state.targetTotal = nextReversed.length;
+  state.normToOriginal = buildNormToOriginal(nextWords, nextReversed);
   state.players = {};
 
-  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextWords.join(' ')}*`;
+  const replyText = `+1 ${winnerMention} (${timeTaken.toFixed(3)}s)\n\n*${nextReversed.join(' ')}*`;
 
   state.startTime = process.hrtime.bigint();
   const sendStart = state.startTime;
@@ -159,25 +154,25 @@ async function processMessage(ctx, chatId, state, m) {
   ).then(() => {
     state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
   }).catch(err => {
-    console.error('تفكيك game send error:', err);
+    console.error('معكس game send error:', err);
   });
 }
 
 export default {
-  name: 'متف',
-  aliases: ['ستف', 'تفكيك'],
-  description: 'تفكيك: نفس بنك كلمات كت، بس لازم تكتب الكلمة مفكوكة حرف حرف مفصول بمسافة',
+  name: 'معكس',
+  aliases: ['سعكس'],
+  description: 'معكس: نفس بنك كلمات كت، بس لازم تكتب الكلمة معكوسة',
   cooldown: 0,
 
   async execute(ctx) {
     ensureGlobalListener(ctx);
 
-    const store = ctx.store.namespace('tafkikGame');
+    const store = ctx.store.namespace('reverseGame');
     const commandUsed = ctx.command.toLowerCase();
 
-    if (commandUsed === 'ستف') {
+    if (commandUsed === 'سعكس') {
       if (!store.has(ctx.chatId)) {
-        await ctx.reply('لا توجد لعبة تفكيك شغالة حالياً.');
+        await ctx.reply('لا توجد لعبة معكوسة شغالة حالياً.');
         return;
       }
       const oldState = store.get(ctx.chatId);
@@ -202,10 +197,7 @@ export default {
 
     ctx.store.stopAllGames(ctx);
 
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
-
-    let count = Math.floor(Math.random() * 10) + 1; // random 1-10 if no count given
+    let count = Math.floor(Math.random() * 10) + 1;
 
     if (ctx.args.length > 0 && !isNaN(parseInt(ctx.args[0], 10))) {
       count = parseInt(ctx.args[0], 10);
@@ -213,14 +205,15 @@ export default {
 
     if (count < 1) count = 1;
 
-    const targetWords = getRandomWords(count, recentTracker.getExcluded(ctx.chatId));
+    const targetWords = getRandomWords(count, reverseTracker.getExcluded(ctx.chatId));
     if (!targetWords.length) {
       await ctx.reply('خطأ: لم يتم العثور على كلمات في game-data.json');
       return;
     }
 
     const targetNormalized = targetWords.map(normalizeLenient);
-    recentTracker.record(ctx.chatId, targetNormalized);
+    const targetReversed = targetNormalized.map(reverseNormalized);
+    reverseTracker.record(ctx.chatId, targetNormalized);
 
     if (targetWords.length < count) {
       await ctx.reply(`يوجد فقط ${targetWords.length} كلمة متاحة في هذه الفئة (تم طلب ${count}).`);
@@ -230,8 +223,9 @@ export default {
       targetWords,
       targetCount: count,
       targetNormalized,
-      targetLetterSeqs: buildLetterSeqs(targetNormalized),
-      targetTotal: targetWords.length,
+      targetReversed,
+      targetTotal: targetReversed.length,
+      normToOriginal: buildNormToOriginal(targetWords, targetReversed),
       players: {},
       startTime: process.hrtime.bigint(),
       scores: {},
@@ -240,6 +234,6 @@ export default {
 
     store.set(ctx.chatId, state);
 
-    await ctx.reply(`*${targetWords.join(' ')}*`);
+    await ctx.reply(`*${targetReversed.join(' ')}*`);
   }
 };

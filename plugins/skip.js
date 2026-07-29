@@ -3,7 +3,8 @@ import { getLocalImageList, pickRandom } from './pic.js';
 import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory, recentTracker as ssTracker } from './ss.js';
 import { getRandomWords, buildNormToOriginal, recentTracker as katTracker } from './kat.js';
 import { normalizeStrict, normalizeLenient } from '../lib/normalizeArabic.js';
-import { buildLetterSeqs, recentTracker as tafkikTracker } from './tafkik.js';
+import { reverseNormalized, recentTracker as reverseTracker } from './reverse.js';
+import { buildReversedLetterSeqs, recentTracker as reverseTafkikTracker } from './reverse-tafkik.js';
 
 export default {
   name: 'سكب',
@@ -95,6 +96,51 @@ export default {
       state.players = {};
       state.startTime = process.hrtime.bigint();
 
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      return;
+    }
+
+    const reverseStore = ctx.store.namespace('reverseGame');
+    if (reverseStore.has(chatId)) {
+      const state = reverseStore.get(chatId);
+      const correctAnswers = state.targetWords.join(' - ');
+
+      const nextWords = getRandomWords(state.targetCount, reverseTracker.getExcluded(chatId));
+      if (!nextWords.length) {
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\nخطأ: لم يتم العثور على كلمات جديدة.`);
+        return;
+      }
+      const nextNormalized = nextWords.map(normalizeLenient);
+      const nextReversed = nextNormalized.map(reverseNormalized);
+      reverseTracker.record(chatId, nextNormalized);
+      state.targetWords = nextWords;
+      state.targetReversed = nextReversed;
+      state.targetTotal = nextReversed.length;
+      state.normToOriginal = buildNormToOriginal(nextWords, nextReversed);
+      state.players = {};
+      state.startTime = process.hrtime.bigint();
+      await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
+      return;
+    }
+
+    const reverseTafkikStore = ctx.store.namespace('reverseTafkikGame');
+    if (reverseTafkikStore.has(chatId)) {
+      const state = reverseTafkikStore.get(chatId);
+      const correctAnswers = state.targetWords.join(' - ');
+
+      const nextWords = getRandomWords(state.targetCount, reverseTafkikTracker.getExcluded(chatId));
+      if (!nextWords.length) {
+        await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\nخطأ: لم يتم العثور على كلمات جديدة.`);
+        return;
+      }
+      const nextNormalized = nextWords.map(normalizeLenient);
+      reverseTafkikTracker.record(chatId, nextNormalized);
+      state.targetWords = nextWords;
+      state.targetNormalized = nextNormalized;
+      state.targetLetterSeqs = buildReversedLetterSeqs(nextNormalized);
+      state.targetTotal = nextWords.length;
+      state.players = {};
+      state.startTime = process.hrtime.bigint();
       await ctx.reply(`*تم التخطي*\n\nالإجابة الصحيحة كانت:\n*${correctAnswers}*\n\n*${nextWords.join(' ')}*`);
       return;
     }
