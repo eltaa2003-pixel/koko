@@ -204,6 +204,7 @@ export default {
     ctx.store.namespace('ta3Game').delete(ctx.chatId);
     ctx.store.namespace('picGame').delete(ctx.chatId);
     ctx.store.namespace('ssGame').delete(ctx.chatId);
+    ctx.store.namespace('tournamentGame').delete(ctx.chatId);
 
     let count = 1;
     const match = commandUsed.match(/^(?:متف|تفكيك)(\d+)$/);

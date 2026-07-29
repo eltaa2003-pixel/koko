@@ -246,6 +246,7 @@ export default {
     ctx.store.namespace('ta3Game').delete(ctx.chatId);
     ctx.store.namespace('ssGame').delete(ctx.chatId);
     ctx.store.namespace('tafkikGame').delete(ctx.chatId);
+    ctx.store.namespace('tournamentGame').delete(ctx.chatId);
 
     const [firstItem] = pickRandom(list, 1);
     const state = {
