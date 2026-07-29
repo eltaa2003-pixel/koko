@@ -3,6 +3,7 @@ import { getLocalImageList, pickRandom } from './pic.js';
 import { getRandomQuestion as getRandomSSQuestion, buildAnswerData as buildSSAnswerData, getDisplayAnswers as getSSDisplayAnswers, pushHistory as pushSSHistory, recentTracker as ssTracker } from './ss.js';
 import { getRandomWords, buildNormToOriginal, recentTracker as katTracker } from './kat.js';
 import { normalizeStrict, normalizeLenient } from '../lib/normalizeArabic.js';
+import { buildLetterSeqs, recentTracker as tafkikTracker } from './tafkik.js';
 import { reverseNormalized, recentTracker as reverseTracker } from './reverse.js';
 import { buildReversedLetterSeqs, recentTracker as reverseTafkikTracker } from './reverse-tafkik.js';
 
