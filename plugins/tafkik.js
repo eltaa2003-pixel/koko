@@ -127,7 +127,8 @@ async function processMessage(ctx, chatId, state, m) {
   }
 
   const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
-  const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
+  const sendLatency = state.sendLatencyPromise ? await state.sendLatencyPromise : 0;
+  const timeTaken = Math.max(0, rawTime - sendLatency);
   const winnerMention = `@${senderJid.split('@')[0]}`;
 
   state.scores[senderJid] = (state.scores[senderJid] || 0) + 1;
@@ -159,15 +160,16 @@ async function processMessage(ctx, chatId, state, m) {
   state.startTime = process.hrtime.bigint();
   const sendStart = state.startTime;
 
-  ctx.sock.sendMessage(
+  state.sendLatencyPromise = ctx.sock.sendMessage(
     chatId,
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
   ).then((sentMsg) => {
-    state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
     state.roundMsgKey = sentMsg.key;
+    return Number(process.hrtime.bigint() - sendStart) / 1e9;
   }).catch(err => {
     console.error('تفكيك game send error:', err);
+    return 0;
   });
 }
 
