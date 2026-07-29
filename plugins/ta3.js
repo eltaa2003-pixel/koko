@@ -1,5 +1,6 @@
 import { loadCategory, saveAnswers } from '../lib/gameData.js';
 import { recordWin } from '../lib/playerStats.js';
+import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
@@ -199,6 +200,12 @@ async function processMessage(ctx, chatId, state, m) {
     if (state.isTransitioning) return;
     state.isTransitioning = true;
 
+    if (state.roundMsgKey) {
+      measureDeliveryLatency(ctx.sock, state.roundMsgKey, senderJid)
+        .then(latency => updateLatencyBaseline(senderJid, latency))
+        .catch(() => {});
+    }
+
     const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
     const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
     const winnerMention = `@${senderJid.split('@')[0]}`;
@@ -239,8 +246,9 @@ async function processMessage(ctx, chatId, state, m) {
         mentions: [senderJid]
       },
       { quoted: m }
-    ).then(() => {
+    ).then((sentMsg) => {
       state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
+      state.roundMsgKey = sentMsg.key;
       state.isTransitioning = false;
     }).catch(err => {
       console.error('تع game send error:', err);
@@ -336,6 +344,7 @@ export default {
 
     store.set(ctx.chatId, state);
 
-    await ctx.reply(`*تع/3 ${firstQ.question}*`);
+    const firstMsg = await ctx.reply(`*تع/3 ${firstQ.question}*`);
+    state.roundMsgKey = firstMsg.key;
   }
 };

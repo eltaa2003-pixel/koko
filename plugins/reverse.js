@@ -1,6 +1,7 @@
 import { getRandomWords, buildNormToOriginal, recentTracker as reverseTracker } from './kat.js';
 export { reverseTracker as recentTracker };
 import { recordWin } from '../lib/playerStats.js';
+import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
 
 export function reverseNormalized(text) {
@@ -113,6 +114,12 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (!justWon) return;
 
+  if (state.roundMsgKey) {
+    measureDeliveryLatency(ctx.sock, state.roundMsgKey, senderJid)
+      .then(latency => updateLatencyBaseline(senderJid, latency))
+      .catch(() => {});
+  }
+
   const rawTime = Number(process.hrtime.bigint() - state.startTime) / 1e9;
   const timeTaken = Math.max(0, rawTime - (state.sendLatency || 0));
   const winnerMention = `@${senderJid.split('@')[0]}`;
@@ -152,8 +159,9 @@ async function processMessage(ctx, chatId, state, m) {
     chatId,
     { text: replyText, mentions: [senderJid] },
     { quoted: m }
-  ).then(() => {
+  ).then((sentMsg) => {
     state.sendLatency = Number(process.hrtime.bigint() - sendStart) / 1e9;
+    state.roundMsgKey = sentMsg.key;
   }).catch(err => {
     console.error('معكس game send error:', err);
   });
@@ -235,6 +243,7 @@ export default {
 
     store.set(ctx.chatId, state);
 
-    await ctx.reply(`*${targetWords.join(' ')}*`);
+    const firstMsg = await ctx.reply(`*${targetWords.join(' ')}*`);
+    state.roundMsgKey = firstMsg.key;
   }
 };
