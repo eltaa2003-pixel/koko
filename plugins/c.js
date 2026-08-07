@@ -50,6 +50,6 @@ export default {
       return;
     }
 
-    await ctx.reply(`الأرقام غير المسجلة (${unregistered.length}):\n\n${unregistered.join('\n')}`);
+    await ctx.reply(`الأرقام غير المسجلة (${unregistered.length}):\n\n${unregistered.map(n => `+${n}`).join('\n')}`);
   }
 };
