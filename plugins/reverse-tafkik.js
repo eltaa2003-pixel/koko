@@ -3,6 +3,7 @@ import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const recentTracker = makeRecentTracker();
 
@@ -196,7 +197,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 

@@ -19,6 +19,7 @@ import { getRandomQuestion as ssGetRandomQuestion, recentTracker as ssRecentTrac
 import { getRandomQuestion as ta3GetRandomQuestion, recentTracker as ta3RecentTracker, buildAnswersMap } from './ta3.js';
 import { getLocalImageList, pickRandom as pickRandomImage } from './pic.js';
 import { normalizeLenient, normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const SECTION_ORDER = ['tafkik', 'pic', 'mixed', 'kat'];
 const FIXED_TARGET = 5;
@@ -358,10 +359,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (commandUsed === 'بدء') {
       ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {

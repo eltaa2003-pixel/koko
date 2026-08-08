@@ -3,6 +3,7 @@ import path from 'node:path';
 import { recordWin } from '../lib/playerStats.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 import { getRandomWords } from './kat.js';
 
 // ============================================================================
@@ -35,6 +36,8 @@ const MODE_LABELS = {
   salad: 'مغر (عشوائي)',
   count: 'مكرر (تكراري)'
 };
+
+const STOP_MODE_MAP = { 'سقه': 'tashkeel', 'سق': 'plain', 'سكرر': 'count', 'سغر': 'salad' };
 
 // ---------------------------------------------------------------------------
 // tashkeel phrase bank (local JSON, hand-maintained — see the file's _note)
@@ -97,6 +100,14 @@ async function fetchWikiPhrase(minWords = 8) {
 // doesn't reproduce it cleanly.
 function withCommas(text) {
   return text.split(/\s+/).filter(Boolean).map(w => `${w}،`).join(' ');
+}
+
+function stripHamza(text) {
+  return text
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '');
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +247,7 @@ async function buildLoosePhrase(mode, chatId) {
   }
   if (mode === 'plain') {
     const phrase = await fetchWikiPhrase(8);
-    return phrase ? withCommas(phrase) : null;
+    return phrase ? withCommas(stripHamza(phrase)) : null;
   }
   if (mode === 'salad') {
     return buildSalad(chatId);
@@ -326,7 +337,7 @@ async function processCountAnswer(ctx, chatId, state, m, text) {
 // stop
 // ---------------------------------------------------------------------------
 
-async function stopGame(ctx) {
+async function stopGame(ctx, expectedMode) {
   const store = ctx.store.namespace(GAME_ID);
 
   if (!store.has(ctx.chatId)) {
@@ -335,9 +346,14 @@ async function stopGame(ctx) {
   }
 
   const state = store.get(ctx.chatId);
-  store.delete(ctx.chatId);
 
-  const label = MODE_LABELS[state.mode] || 'مقالة';
+  if (state.mode !== expectedMode) {
+    await ctx.reply(`النشاط الحالي هو ${MODE_LABELS[state.mode]}. استخدم أمر الإيقاف الخاص به، أو .سكل لإيقاف أي نشاط.`);
+    return;
+  }
+
+  store.delete(ctx.chatId);
+  const label = MODE_LABELS[state.mode];
 
   if (state.mode !== 'count') {
     await ctx.reply(`تم إيقاف ${label}.`);
@@ -406,7 +422,7 @@ async function startCount(ctx) {
 
 export default {
   name: 'مقه',
-  aliases: ['مق', 'مكرر', 'مغر', 'سق', 'سقه'],
+  aliases: ['مق', 'مكرر', 'مغر', 'سقه', 'سق', 'سكرر', 'سغر'],
   description: 'عائلة أوامر المقالة: .مقه (مشكولة) / .مق (بدون تشكيل) / .مغر (كلمات عشوائية) / .مكرر (تحدي عد وتكرار) — وقف بـ .سق أو .سقه',
   cooldown: 0,
 
@@ -415,14 +431,12 @@ export default {
 
     const commandUsed = ctx.command.toLowerCase();
 
-    if (commandUsed === 'سق' || commandUsed === 'سقه') {
-      await stopGame(ctx);
+    if (STOP_MODE_MAP[commandUsed]) {
+      await stopGame(ctx, STOP_MODE_MAP[commandUsed]);
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (commandUsed === 'مقه') {
       await startLoose(ctx, 'tashkeel');

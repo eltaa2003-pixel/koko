@@ -3,6 +3,7 @@ export { reverseTracker as recentTracker };
 import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export function reverseNormalized(text) {
   return text.split('').reverse().join('');
@@ -206,7 +207,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 

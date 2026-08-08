@@ -1,3 +1,5 @@
+import { GAME_REGISTRY } from '../lib/games.js';
+
 export default {
   name: 'سكل',
   aliases: ['انهاء', 'stopall'],
@@ -8,19 +10,7 @@ export default {
     const { sock, chatId, store, reply } = ctx;
     let stoppedAny = false;
 
-    const games = [
-      { id: 'katGame', name: 'كت' },
-      { id: 'tafkikGame', name: 'تفكيك' },
-      { id: 'tournamentGame', name: 'بطولة' },
-      { id: 'ta3Game', name: 'تع/3' },
-      { id: 'picGame', name: 'الصور' },
-      { id: 'ssGame', name: 'س/سس' },
-      { id: 'reverseGame', name: 'عكس' },
-      { id: 'reverseTafkikGame', name: 'عكس تفكيك' },
-      { id: 'maqalaGame', name: 'مقالة' }
-    ];
-
-    for (const game of games) {
+    for (const game of GAME_REGISTRY) {
       const state = store.namespace(game.id).get(chatId);
 
       if (state) {

@@ -4,6 +4,7 @@ import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 
@@ -263,10 +264,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 

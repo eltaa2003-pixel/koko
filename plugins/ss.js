@@ -4,6 +4,7 @@ import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const SS_POOL = await loadCategory('سس');
 
@@ -329,10 +330,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (!SS_POOL.length) {
       await ctx.reply('علقت');

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { recordWin } from '../lib/playerStats.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const IMAGES_DIR = path.resolve('saved_images');
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
@@ -242,7 +243,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     const [firstItem] = pickRandom(list, 1);
     const state = {
