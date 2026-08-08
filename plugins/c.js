@@ -1,4 +1,6 @@
 const CHECK_TTL_NS = 30n * 60n * 1000000000n;
+const BATCH_SIZE = 100;
+const BATCH_DELAY_MS = 2000;
 
 function extractNumbers(text) {
   if (!text) return [];
@@ -18,18 +20,34 @@ async function checkNumber(sock, number) {
   }
 }
 
-async function getCachedResult(store, number) {
-  const entry = store.get(number);
-  if (!entry) return null;
-  if (BigInt(process.hrtime.bigint()) - BigInt(entry.checkedAt) > CHECK_TTL_NS) {
-    store.delete(number);
-    return null;
-  }
-  return entry.exists;
+async function getHistory(store, number) {
+  return store.get(number) || null;
 }
 
-async function setCachedResult(store, number, exists) {
-  store.set(number, { exists, checkedAt: Number(process.hrtime.bigint()) });
+async function recordCheck(store, number, exists) {
+  const prev = store.get(number);
+  const entry = {
+    exists,
+    checkedAt: Number(process.hrtime.bigint()),
+    count: (prev?.count || 0) + 1
+  };
+  store.set(number, entry);
+  return entry;
+}
+
+function formatDuration(ns) {
+  const hours = Number(ns / 3600000000000n);
+  if (hours < 1) return 'أقل من ساعة';
+  if (hours === 1) return 'ساعة واحدة';
+  if (hours < 24) return `${hours} ساعات`;
+  const days = Math.floor(hours / 24);
+  const rem = hours % 24;
+  if (!rem) return days === 1 ? 'يوم واحد' : `${days} أيام`;
+  return `${days} يوم و ${rem} ساعة`;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export default {
@@ -46,64 +64,91 @@ export default {
 
     const quoted = ctx.msg.message.extendedTextMessage.contextInfo.quotedMessage;
     const sourceText = quoted.conversation || quoted.extendedTextMessage?.text || '';
-    const numbers = [...new Set(extractNumbers(sourceText))];
+    const rawNumbers = extractNumbers(sourceText);
+    const numbers = [...new Set(rawNumbers)];
 
     if (!numbers.length) {
       await ctx.reply('لم يتم العثور على أرقام صالحة في الرسالة.');
       return;
     }
 
-    await ctx.reply(`جاري فحص ${numbers.length} رقم...`);
+    const totalBatches = Math.ceil(numbers.length / BATCH_SIZE);
+    await ctx.reply(`تم العثور على ${numbers.length} رقم (${totalBatches} دفعة). جاري الفحص...`);
 
-    const checkStore = ctx.store.namespace('waChecks');
-    const fresh = [];
-    const cached = [];
-    const registered = [];
-    const unregistered = [];
+    const historyStore = ctx.store.namespace('waCheckHistory');
+    const now = BigInt(process.hrtime.bigint());
+    const COOLDOWN_NS = 24n * 3600000000000n;
 
-    for (const num of numbers) {
-      const cachedResult = await getCachedResult(checkStore, num);
-      if (cachedResult !== null) {
-        cached.push(num);
-        if (cachedResult) registered.push(num);
-        else unregistered.push(num);
-      } else {
-        fresh.push(num);
+    const allRegistered = [];
+    const allUnregistered = [];
+    const allFresh = [];
+    const allPreviouslyChecked = [];
+    const recentlyTried = [];
+
+    for (let i = 0; i < numbers.length; i += BATCH_SIZE) {
+      const batch = numbers.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+
+      if (batchNum > 1) {
+        await ctx.reply(`الدفعة ${batchNum - 1}/${totalBatches} مكتملة. جاري الدفعة ${batchNum}/${totalBatches}...`);
+        await sleep(BATCH_DELAY_MS);
+      }
+
+      for (const num of batch) {
+        const history = await getHistory(historyStore, num);
+        if (history) {
+          allPreviouslyChecked.push({ num, history });
+          if (history.exists) allRegistered.push(num);
+          else {
+            allUnregistered.push(num);
+            const age = now - BigInt(history.checkedAt);
+            if (age < COOLDOWN_NS) {
+              recentlyTried.push({ num, history, remaining: COOLDOWN_NS - age });
+            }
+          }
+        } else {
+          allFresh.push(num);
+          const exists = await checkNumber(ctx.sock, num);
+          await recordCheck(historyStore, num, exists);
+          if (exists) allRegistered.push(num);
+          else {
+            allUnregistered.push(num);
+            recentlyTried.push({ num, history: { exists, checkedAt: Number(process.hrtime.bigint()), count: 1 }, remaining: COOLDOWN_NS });
+          }
+        }
       }
     }
 
-    for (const num of fresh) {
-      const exists = await checkNumber(ctx.sock, num);
-      await setCachedResult(checkStore, num, exists);
-      if (exists) registered.push(num);
-      else unregistered.push(num);
-    }
+    await ctx.reply(`اكتمل الفحص! جاري تجميع النتائج...`);
 
     const fmt = (arr) => arr.map(n => `+${n}`).join('\n');
 
     const lines = [];
-    if (fresh.length) lines.push(`فحص جديد (${fresh.length}):\n${fmt(fresh)}`);
-    if (cached.length) lines.push(`محفوظ مسبقاً (${cached.length}):\n${fmt(cached)}`);
+    if (allFresh.length) lines.push(`أرقام جديدة لم يُفحصها أحد من قبل (${allFresh.length}):\n${fmt(allFresh)}`);
+    if (allPreviouslyChecked.length) {
+      const detail = allPreviouslyChecked.map(({ num, history }) => {
+        const age = now - BigInt(history.checkedAt);
+        const suffix = !history.exists && age < COOLDOWN_NS ? ` ⚠️ ${formatDuration(COOLDOWN_NS - age)} متبقي` : '';
+        return `+${num} (${history.count} فحص${suffix})`;
+      }).join('\n');
+      lines.push(`أرقام تم فحصها سابقاً (${allPreviouslyChecked.length}):\n${detail}`);
+    }
 
-    if (!registered.length && !unregistered.length) {
+    if (!allRegistered.length && !allUnregistered.length) {
       await ctx.reply('لا توجد أرقام للعرض.');
       return;
     }
 
-    if (!unregistered.length) {
-      await ctx.reply(`جميع الأرقام مسجلة في واتساب (${registered.length}):\n\n${lines.join('\n\n')}`);
-      return;
+    const header = [];
+    if (allRegistered.length) header.push(`مسجلة (${allRegistered.length}):\n${fmt(allRegistered)}`);
+    if (allUnregistered.length) {
+      const suffix = recentlyTried.length ? `\n⚠️ الأرقام المُعلَّمة تحتاج 24 ساعة على الأقل قبل المحاولة مجدداً` : '';
+      header.push(`غير مسجلة (${allUnregistered.length}):\n${fmt(allUnregistered)}${suffix}`);
     }
 
-    if (!registered.length) {
-      await ctx.reply(`لا توجد أرقام مسجلة (${unregistered.length}):\n\n${lines.join('\n\n')}`);
-      return;
-    }
+    const body = [header.join('\n\n')];
+    if (lines.length) body.push(lines.join('\n\n'));
 
-    await ctx.reply(
-      `مسجلة (${registered.length}):\n${fmt(registered)}\n\n` +
-      `غير مسجلة (${unregistered.length}):\n${fmt(unregistered)}\n\n` +
-      lines.join('\n\n')
-    );
+    await ctx.reply(body.filter(Boolean).join('\n\n'));
   }
 };
