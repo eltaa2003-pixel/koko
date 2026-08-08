@@ -31,7 +31,7 @@ export default {
     const quoted = ctx.msg.message.extendedTextMessage.contextInfo.quotedMessage;
     const sourceText = quoted.conversation || quoted.extendedTextMessage?.text || '';
 
-    const numbers = extractNumbers(sourceText);
+    const numbers = [...new Set(extractNumbers(sourceText))];
     if (!numbers.length) {
       await ctx.reply('لم يتم العثور على أرقام صالحة في الرسالة.');
       return;
@@ -39,17 +39,34 @@ export default {
 
     await ctx.reply(`جاري فحص ${numbers.length} رقم...`);
 
+    const registered = [];
     const unregistered = [];
     for (const num of numbers) {
       const exists = await checkNumber(ctx.sock, num);
-      if (!exists) unregistered.push(num);
+      if (exists) registered.push(num);
+      else unregistered.push(num);
     }
 
-    if (!unregistered.length) {
-      await ctx.reply('جميع الأرقام مسجلة في واتساب.');
+    const fmt = (arr) => arr.map(n => `+${n}`).join('\n');
+
+    if (!registered.length && !unregistered.length) {
+      await ctx.reply('لا توجد أرقام للعرض.');
       return;
     }
 
-    await ctx.reply(`الأرقام غير المسجلة (${unregistered.length}):\n\n${unregistered.map(n => `+${n}`).join('\n')}`);
+    if (!unregistered.length) {
+      await ctx.reply(`جميع الأرقام مسجلة في واتساب (${registered.length}):\n\n${fmt(registered)}`);
+      return;
+    }
+
+    if (!registered.length) {
+      await ctx.reply(`لا توجد أرقام مسجلة (${unregistered.length}):\n\n${fmt(unregistered)}`);
+      return;
+    }
+
+    await ctx.reply(
+      `مسجلة (${registered.length}):\n${fmt(registered)}\n\n` +
+      `غير مسجلة (${unregistered.length}):\n${fmt(unregistered)}`
+    );
   }
 };
