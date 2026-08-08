@@ -1,7 +1,7 @@
 export default {
   name: 'سكل',
   aliases: ['انهاء', 'stopall'],
-  description: 'يوقف أي فعالية شغالة في الكروب (تع، كت، صور) ويظهر النتائج',
+  description: 'يوقف أي فعالية شغالة في الكروب (تع، كت، صور، مقالة) ويظهر النتائج',
   cooldown: 3,
 
   async execute(ctx) {
@@ -16,7 +16,8 @@ export default {
       { id: 'picGame', name: 'الصور' },
       { id: 'ssGame', name: 'س/سس' },
       { id: 'reverseGame', name: 'عكس' },
-      { id: 'reverseTafkikGame', name: 'عكس تفكيك' }
+      { id: 'reverseTafkikGame', name: 'عكس تفكيك' },
+      { id: 'maqalaGame', name: 'مقالة' }
     ];
 
     for (const game of games) {
