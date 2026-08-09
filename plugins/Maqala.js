@@ -9,19 +9,19 @@ import { getRandomWords } from './kat.js';
 // ============================================================================
 // مقالة command family
 //
-//   .مقه   — full sentence, WITH tashkeel (مشكولة). Any reply -> new one.
+//   .مقه   — full sentence, WITH tashkeel (مشكولة). Reply to advance.
 //   .مق    — full sentence, plain (no tashkeel), pulled from Arabic Wikipedia.
-//            Any reply -> new one.
+//            Reply to advance.
 //   .مغر   — random word salad (5–15 unrelated words from the كت word bank).
-//            Any reply -> new one.
+//            Reply to advance.
 //   .مكرر  — the "numbering" mode: like كت, but the target word/count list is
 //            built live from a random Wikipedia sentence instead of a fixed
 //            word bank. Players type the words out until the quota's filled.
-//   .سق / .سقه — stop whichever مقالة round is running in the chat.
+//   .سقه / .سق / .سكرر / .سغر — stop the running مقالة mode (mode-specific).
 //
 // مقه/مق/مغر are deliberately NOT a matching game — the phrases are already
-// long, so "did you respond at all" is the only bar. مكرر is the one mode
-// that keeps score, exactly like كت.
+// long, so "reply to the bot's last مقالة message" is the only bar. مكرر is the
+// one mode that keeps score, exactly like كت.
 // ============================================================================
 
 const GAME_ID = 'maqalaGame';
@@ -184,6 +184,10 @@ function getText(m) {
   );
 }
 
+function getQuotedId(m) {
+  return m.message?.extendedTextMessage?.contextInfo?.stanzaId || null;
+}
+
 const registeredSocks = new WeakSet();
 
 function ensureGlobalListener(ctx) {
@@ -221,7 +225,10 @@ async function processMessage(ctx, chatId, state, m) {
     return;
   }
 
-  // loose modes (tashkeel / plain / salad): ANY reply advances, no scoring.
+  // loose modes: only a reply (quote) to the bot's last مقالة message advances
+  const quotedId = getQuotedId(m);
+  if (!quotedId || quotedId !== state.lastMsgId) return;
+
   await advanceLoose(ctx, chatId, state, m);
 }
 
@@ -232,12 +239,13 @@ async function advanceLoose(ctx, chatId, state, m) {
   const next = await buildLoosePhrase(state.mode, chatId);
   if (!next) {
     ctx.sock.sendMessage(chatId, {
-      text: 'تعذر جلب مقالة جديدة (مشكلة في المصدر). حاول لاحقاً أو أوقف باستخدام .سق'
+      text: 'تعذر جلب مقالة جديدة (مشكلة في المصدر). حاول لاحقاً أو أوقف باستخدام .سكل'
     }).catch(() => {});
     return;
   }
 
-  ctx.sock.sendMessage(chatId, { text: next }, { quoted: m }).catch(() => {});
+  const sent = await ctx.sock.sendMessage(chatId, { text: `${next}\n\n(رد على هذه الرسالة للمتابعة)` }, { quoted: m }).catch(() => null);
+  if (sent?.key?.id) state.lastMsgId = sent.key.id;
 }
 
 async function buildLoosePhrase(mode, chatId) {
@@ -315,7 +323,7 @@ async function processCountAnswer(ctx, chatId, state, m, text) {
   const nextCounts = await fetchCountRound();
   if (!nextCounts) {
     ctx.sock.sendMessage(chatId, {
-      text: `+1 ${winnerMention}\n\nتعذر جلب جولة جديدة، أوقف باستخدام .سق`,
+      text: `+1 ${winnerMention}\n\nتعذر جلب جولة جديدة، أوقف باستخدام .سكرر`,
       mentions: [senderJid]
     }).catch(() => {});
     return;
@@ -390,12 +398,11 @@ async function startLoose(ctx, mode) {
   }
 
   const store = ctx.store.namespace(GAME_ID);
-  store.set(ctx.chatId, {
-    mode,
-    queue: Promise.resolve()
-  });
+  const state = { mode, queue: Promise.resolve(), lastMsgId: null };
+  store.set(ctx.chatId, state);
 
-  await ctx.reply(phrase);
+  const sent = await ctx.sock.sendMessage(ctx.chatId, { text: `${phrase}\n\n(رد على هذه الرسالة للمتابعة)` });
+  state.lastMsgId = sent?.key?.id || null;
 }
 
 async function startCount(ctx) {
@@ -423,7 +430,7 @@ async function startCount(ctx) {
 export default {
   name: 'مقه',
   aliases: ['مق', 'مكرر', 'مغر', 'سقه', 'سق', 'سكرر', 'سغر'],
-  description: 'عائلة أوامر المقالة: .مقه (مشكولة) / .مق (بدون تشكيل) / .مغر (كلمات عشوائية) / .مكرر (تحدي عد وتكرار) — وقف بـ .سق أو .سقه',
+  description: 'عائلة أوامر المقالة: .مقه (مشكولة) / .مق (بدون تشكيل) / .مغر (كلمات عشوائية) / .مكرر (تحدي عد وتكرار) — وقف بـ .سقه / .سق / .سكرر / .سغر',
   cooldown: 0,
 
   async execute(ctx) {
