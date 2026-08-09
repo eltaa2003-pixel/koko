@@ -42,7 +42,7 @@ const STUB_PATTERNS = [
 
 function isGoodQuality(text) {
   const words = text.split(/\s+/).filter(Boolean);
-  if (words.length < 15) return false;
+  if (words.length < 7) return false;
 
   const digitChars = (text.match(/[0-9\u0660-\u0669]/g) || []).length;
   if (digitChars / text.length > 0.08) return false;
@@ -68,7 +68,10 @@ async function fetchWikiPhrase() {
         .filter(t => t && isGoodQuality(t));
 
       if (candidates.length) {
-        return candidates[Math.floor(Math.random() * candidates.length)];
+        const selected = candidates[Math.floor(Math.random() * candidates.length)];
+        const words = selected.split(/\s+/).filter(Boolean);
+        const targetLen = 5 + Math.floor(Math.random() * 3); // 5..7
+        return words.slice(0, targetLen).join(' ');
       }
     } catch (err) {
       console.error('fetchWikiPhrase error:', err);
