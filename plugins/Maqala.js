@@ -8,7 +8,7 @@ import { getRandomWords } from './kat.js';
 // ============================================================================
 // مقالة command family — all four modes now share one mechanic:
 //   1. bot posts a challenge message
-//   2. player must REPLY (quote) to the bot's latest message for that round
+//   2. any message in the chat is checked word-by-word against a remaining-count map (كت-style)
 //   3. reply is checked word-by-word against a remaining-count map (كت-style)
 //   4. incomplete/wrong -> "اكتب:" hint listing what's left, round continues
 //   5. complete -> WPM + time announced, a new challenge auto-starts
@@ -138,7 +138,11 @@ function stripHamza(text) {
 // comma after every word — breaks up the run of text so copy-pasting
 // elsewhere doesn't reproduce it cleanly
 function withCommas(text) {
-  return text.split(/\s+/).filter(Boolean).map(w => `${w}،`).join(' ');
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => `${w.replace(/[،,.:؛!؟]+$/g, '')}،`)
+    .join(' ');
 }
 
 // word -> count map, used for matching AND (for مكرر) for display
@@ -233,10 +237,6 @@ function getText(m) {
   );
 }
 
-function getQuotedId(m) {
-  return m.message?.extendedTextMessage?.contextInfo?.stanzaId || null;
-}
-
 const registeredSocks = new WeakSet();
 
 function ensureGlobalListener(ctx) {
@@ -265,10 +265,6 @@ function ensureGlobalListener(ctx) {
 async function processMessage(ctx, chatId, state, m) {
   const store = ctx.store.namespace(GAME_ID);
   if (store.get(chatId) !== state) return;
-
-  // must be a reply to the round's latest bot message
-  const quotedId = getQuotedId(m);
-  if (!quotedId || quotedId !== state.lastMsgId) return;
 
   const text = getText(m);
   if (!text) return;
@@ -313,7 +309,6 @@ async function processMessage(ctx, chatId, state, m) {
         text: `${mention} اكتب:\n${remainingWords.join(',')}`,
         mentions: [senderJid]
       }, { quoted: m }).catch(() => null);
-      if (sent?.key?.id) state.lastMsgId = sent.key.id;
     }
     return;
   }
@@ -353,7 +348,6 @@ async function processMessage(ctx, chatId, state, m) {
     console.error('مقالة send error:', err);
     return null;
   });
-  if (sent?.key?.id) state.lastMsgId = sent.key.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -398,19 +392,17 @@ async function startRound(ctx, mode) {
     round,
     players: {},
     startTime: process.hrtime.bigint(),
-    queue: Promise.resolve(),
-    lastMsgId: null
+    queue: Promise.resolve()
   };
   store.set(ctx.chatId, state);
 
   const sent = await ctx.sock.sendMessage(ctx.chatId, { text: round.displayText });
-  state.lastMsgId = sent?.key?.id || null;
 }
 
 export default {
   name: 'مقه',
   aliases: ['مق', 'مكرر', 'مغر', 'سقه', 'سق', 'سكرر', 'سغر'],
-  description: 'عائلة أوامر المقالة: .مقه / .مق / .مغر / .مكرر — رد على رسالة البوت بالإجابة. وقف بـ .سقه/.سق/.سكرر/.سغر',
+  description: 'عائلة أوامر المقالة: .مقه / .مق / .مغر / .مكرر — أي رسالة في الكروب تُفحص كلمة بكلمة. وقف بـ .سقه/.سق/.سكرر/.سغر',
   cooldown: 0,
 
   async execute(ctx) {
