@@ -48,6 +48,7 @@ async function start() {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, baileysLogger)
     },
+    usePairingCode: process.env.USE_PAIRING_CODE === 'true',
     syncFullHistory: false,
     markOnlineOnConnect: false
   });
@@ -55,7 +56,14 @@ async function start() {
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
+    const { connection, lastDisconnect, qr, pairingCode } = update;
+
+    if (pairingCode) {
+      console.log('========================================');
+      console.log('Pairing code:', pairingCode);
+      console.log('Enter this code in WhatsApp → Linked devices → Link a device → Enter code');
+      console.log('========================================');
+    }
 
     if (qr) {
       qrcode.generate(qr, { small: true });

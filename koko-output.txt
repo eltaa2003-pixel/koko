@@ -5,8 +5,8 @@ PROJECT EXPORT FOR LLMs
 PROJECT INFORMATION:
 --------------------------------------------------
 Project Name: koko
-Generated On: 2026-08-08 20:06:43 (Asia/Beirut / GMT+03:00)
-Total Files Processed: 204
+Generated On: 2026-08-10 17:27:13 (Asia/Beirut / GMT+03:00)
+Total Files Processed: 207
 Export Tool: Easy Whole Project to Single Text File for LLMs v1.1.0
 Tool Author: Jota / José Guilherme Pandolfi
 
@@ -26,6 +26,7 @@ PROJECT STRUCTURE
 │   ├── 📄 cooldown.js (1.38 KB)
 │   ├── 📄 duplicateCheck.js (634 B)
 │   ├── 📄 gameData.js (2.23 KB)
+│   ├── 📄 games.js (1.32 KB)
 │   ├── 📄 latency.js (1.66 KB)
 │   ├── 📄 loadPlugins.js (1.93 KB)
 │   ├── 📄 logger.js (268 B)
@@ -34,27 +35,29 @@ PROJECT STRUCTURE
 │   ├── 📄 normalizeArabic.js (846 B)
 │   ├── 📄 playerStats.js (3.51 KB)
 │   ├── 📄 recentPicks.js (401 B)
-│   └── 📄 store.js (775 B)
+│   └── 📄 store.js (751 B)
 ├── 📁 plugins/
 │   ├── 📄 Addq.js (8.73 KB)
 │   ├── 📄 c.js (5.48 KB)
 │   ├── 📄 cat.js (1.13 KB)
 │   ├── 📄 game-data.json (51.44 KB)
-│   ├── 📄 kat.js (9.72 KB)
+│   ├── 📄 kat.js (9.66 KB)
 │   ├── 📄 leaderboard-overall.js (1.07 KB)
 │   ├── 📄 leaderboard.js (1.08 KB)
 │   ├── 📄 m.js (4.71 KB)
-│   ├── 📄 pic.js (8.7 KB)
+│   ├── 📄 Maqala-tashkeel.json (4.03 KB)
+│   ├── 📄 Maqala.js (13.71 KB)
+│   ├── 📄 pic.js (8.76 KB)
 │   ├── 📄 ping.js (228 B)
-│   ├── 📄 reverse-tafkik.js (7.54 KB)
-│   ├── 📄 reverse.js (7.79 KB)
+│   ├── 📄 reverse-tafkik.js (7.61 KB)
+│   ├── 📄 reverse.js (7.85 KB)
 │   ├── 📄 skip.js (9.99 KB)
-│   ├── 📄 ss.js (13.16 KB)
+│   ├── 📄 ss.js (13.1 KB)
 │   ├── 📄 sticker.js (6.77 KB)
-│   ├── 📄 stopall.js (1.75 KB)
-│   ├── 📄 ta3.js (11.89 KB)
-│   ├── 📄 tafkik.js (8.55 KB)
-│   └── 📄 Tournament.js (14.75 KB)
+│   ├── 📄 stopall.js (1.37 KB)
+│   ├── 📄 ta3.js (11.83 KB)
+│   ├── 📄 tafkik.js (8.49 KB)
+│   └── 📄 Tournament.js (14.68 KB)
 ├── 📁 saved_images/
 │   ├── 📄 استا.jpeg (74.52 KB)
 │   ├── 📄 اسكانور.jpeg (64.75 KB)
@@ -226,7 +229,7 @@ PROJECT STRUCTURE
 ├── 📁 scripts/
 │   └── 📄 migrate-game-data.js (1.67 KB)
 ├── 📄 config.js (298 B)
-├── 📄 index.js (3.91 KB)
+├── 📄 index.js (4.28 KB)
 ├── 📄 package-lock.json (119.38 KB)
 ├── 📄 package.json (573 B)
 └── 📄 README.md (2.24 KB)
@@ -234,17 +237,17 @@ PROJECT STRUCTURE
 ================================================================================
 PROJECT STATISTICS
 ================================================================================
-Total Files: 204
+Total Files: 207
 Total Directories: 4
-Text Files: 37
+Text Files: 40
 Binary Files: 167
-Total Size: 10.04 MB
+Total Size: 10.05 MB
 
 FILE TYPES DISTRIBUTION:
 ------------------------------
 .jpeg           : 167
-.js             : 33
-.json           : 3
+.js             : 35
+.json           : 4
 .md             : 1
 
 ================================================================================
@@ -431,6 +434,64 @@ export async function seedFromFileIfNeeded() {
     const docs = entries.map(e => ({ category, question: e.question, answers: e.answers }));
     await GameQuestion.insertMany(docs);
     console.log(`seeded ${docs.length} "${category}" question(s) from game-data.json`);
+  }
+}
+
+================================================================================
+
+
+================================================================================
+FILE: lib/games.js
+================================================================================
+
+FILE INFORMATION:
+----------------------------------------
+Size: 1.32 KB
+Extension: .js
+Language: javascript
+Location: lib/games.js
+Relative Path: lib
+Created: 2026-08-08 20:30:53 (Asia/Beirut / GMT+03:00)
+Modified: 2026-08-08 20:30:53 (Asia/Beirut / GMT+03:00)
+MD5: 14b2ed32f1bb2668c43cd50e278fd5cd
+SHA256: 19bf3ae1f2b2862b090deea3ffa4e0147c513b17f00dc813fc6216f01b5adbce
+Encoding: UTF-8
+
+FILE CONTENT:
+----------------------------------------
+export const GAME_REGISTRY = [
+  { id: 'katGame', name: 'كت' },
+  { id: 'tafkikGame', name: 'تفكيك' },
+  { id: 'tournamentGame', name: 'بطولة' },
+  { id: 'ta3Game', name: 'تع/3' },
+  { id: 'picGame', name: 'الصور' },
+  { id: 'ssGame', name: 'س/سس' },
+  { id: 'reverseGame', name: 'عكس' },
+  { id: 'reverseTafkikGame', name: 'عكس تفكيك' },
+  { id: 'maqalaGame', name: 'مقالة' }
+];
+
+export async function stopAllGamesWithReport(ctx) {
+  const { sock, chatId, store } = ctx;
+
+  for (const game of GAME_REGISTRY) {
+    const state = store.namespace(game.id).get(chatId);
+    if (!state) continue;
+
+    store.namespace(game.id).delete(chatId);
+
+    const leaderboard = Object.entries(state.scores || {}).sort((a, b) => b[1] - a[1]);
+    if (!leaderboard.length) {
+      await sock.sendMessage(chatId, { text: `تم إيقاف *${game.name}* لبدء نشاط جديد.\nلم يسجل أحد أي نقطة.` }).catch(() => {});
+      continue;
+    }
+
+    const lines = leaderboard.map(([jid, pts], i) => `${i + 1}. @${jid.split('@')[0]} - ${pts}`);
+    const mentions = leaderboard.map(([jid]) => jid);
+    await sock.sendMessage(chatId, {
+      text: `تم إيقاف *${game.name}* لبدء نشاط جديد.\n\nالنتائج النهائية:\n${lines.join('\n')}`,
+      mentions
+    }).catch(() => {});
   }
 }
 
@@ -1002,15 +1063,15 @@ FILE: lib/store.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 775 B
+Size: 751 B
 Extension: .js
 Language: javascript
 Location: lib/store.js
 Relative Path: lib
 Created: 2026-07-19 16:33:50 (Asia/Beirut / GMT+03:00)
-Modified: 2026-08-08 20:06:39 (Asia/Beirut / GMT+03:00)
-MD5: 902a9c8b8899ca44435614573807ea4b
-SHA256: e022021888605ed940e176fab3307d562edafd1d5e5b1a34bcf90f7fda8b40d5
+Modified: 2026-08-08 20:32:07 (Asia/Beirut / GMT+03:00)
+MD5: 274341af1a31bbacbb95d9adab95de28
+SHA256: 8f83f1495e4ae57479ec7bd2a983c5a726a952eb531528b652d1d384a60f3c07
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -1020,6 +1081,8 @@ FILE CONTENT:
 // every plugin its own namespaced Map instead — call store.namespace('name')
 // and you get a private space that only collides if you ask for the same
 // namespace on purpose.
+
+import { GAME_REGISTRY } from './games.js';
 
 class Store {
   #namespaces = new Map();
@@ -1033,8 +1096,8 @@ class Store {
 
   stopAllGames(ctx) {
     const { chatId } = ctx;
-    for (const id of ['katGame', 'ta3Game', 'ssGame', 'tafkikGame', 'tournamentGame', 'picGame', 'maqalaGame']) {
-      this.namespace(id).delete(chatId);
+    for (const game of GAME_REGISTRY) {
+      this.namespace(game.id).delete(chatId);
     }
   }
 }
@@ -2301,15 +2364,15 @@ FILE: plugins/kat.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 9.72 KB
+Size: 9.66 KB
 Extension: .js
 Language: javascript
 Location: plugins/kat.js
 Relative Path: plugins
 Created: 2026-07-20 11:59:45 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:32 (Asia/Beirut / GMT+03:00)
-MD5: 2dcef388ec59fa3ab7449e4cb89f766b
-SHA256: adecbd9385d54b45366e6257ef6119503dd1fbbf0f089f9964ae93abed43e495
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: 23a6416bbd74cadf7d36ff1b6ff707ff
+SHA256: 2e62bb2d99ab3751fd50334635bcda506f733c36fc9d8508834d0acbd8c35a35
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -2320,6 +2383,7 @@ import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const GAME_DATA_PATH = path.resolve('plugins/game-data.json');
 
@@ -2579,10 +2643,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 
@@ -2896,20 +2957,517 @@ export default {
 
 
 ================================================================================
+FILE: plugins/Maqala-tashkeel.json
+================================================================================
+
+FILE INFORMATION:
+----------------------------------------
+Size: 4.03 KB
+Extension: .json
+Language: json
+Location: plugins/Maqala-tashkeel.json
+Relative Path: plugins
+Created: 2026-08-08 20:07:18 (Asia/Beirut / GMT+03:00)
+Modified: 2026-08-08 20:06:44 (Asia/Beirut / GMT+03:00)
+MD5: aaa951f4f94d65a4f6340b2e525e22a3
+SHA256: 05d9f7cbc8204937f4bc4792cc771b4044cd4d071d86f8a56ef6881ad4357313
+Encoding: UTF-8
+
+FILE CONTENT:
+----------------------------------------
+{
+  "_note": "Fully-vocalized (مشكولة) practice sentences for .مقه. There's no reliable free/keyless auto-tashkeel API, so this list is hand-maintained — just append more strings to \"phrases\" whenever you find/write good ones.",
+  "phrases": [
+    "ذَهَبَ الطَّالِبُ النَّشِيطُ إِلَى المَدْرَسَةِ صَبَاحاً لِيَتَلَقَّى العِلْمَ بِنَشَاطٍ وَحَيَوِيَّةٍ.",
+    "جَلَسَتِ الأُسْرَةُ حَوْلَ المَائِدَةِ تَتَنَاوَلُ طَعَامَ العَشَاءِ وَسَطَ أَحَادِيثَ طَيِّبَةٍ وَضَحِكَاتٍ صَادِقَةٍ.",
+    "أَشْرَقَتِ الشَّمْسُ عَلَى القَرْيَةِ الهَادِئَةِ فَاسْتَيْقَظَ الفَلَّاحُونَ لِيَبْدَؤُوا يَوْمَهُمْ فِي الحُقُولِ الخَضْرَاءِ.",
+    "قَرَأَ الطِّفْلُ الصَّغِيرُ قِصَّةً جَمِيلَةً قَبْلَ النَّوْمِ وَابْتَسَمَ حِينَ وَصَلَ إِلَى نِهَايَتِهَا السَّعِيدَةِ.",
+    "سَافَرَ الرَّجُلُ إِلَى المَدِينَةِ البَعِيدَةِ بَحْثاً عَنْ عَمَلٍ يُعِيلُ بِهِ أُسْرَتَهُ الصَّغِيرَةَ.",
+    "هَطَلَ المَطَرُ بِغَزَارَةٍ عَلَى المَدِينَةِ فَامْتَلَأَتِ الشَّوَارِعُ بِبِرَكِ المَاءِ الصَّافِي.",
+    "لَعِبَ الأَوْلَادُ فِي الحَدِيقَةِ العَامَّةِ حَتَّى غُرُوبِ الشَّمْسِ وَهُمْ يَضْحَكُونَ بِفَرَحٍ.",
+    "اجْتَهَدَتِ الطَّالِبَةُ فِي دِرَاسَتِهَا فَنَجَحَتْ بِتَفَوُّقٍ فِي جَمِيعِ امْتِحَانَاتِهَا.",
+    "زَرَعَ الفَلَّاحُ بُذُوراً كَثِيرَةً فِي أَرْضِهِ الخَصْبَةِ رَاجِياً مَوْسِماً وَفِيراً.",
+    "طَارَتِ العَصَافِيرُ فَوْقَ الغَابَةِ الكَثِيفَةِ وَهِيَ تُغَرِّدُ بِأَصْوَاتٍ جَمِيلَةٍ عِنْدَ الفَجْرِ.",
+    "أَحَبَّ الصَّيَّادُ البَحْرَ كَثِيراً فَكَانَ يَخْرُجُ إِلَيْهِ كُلَّ صَبَاحٍ بَاكِرٍ.",
+    "بَنَى العُمَّالُ بَيْتاً جَمِيلاً مِنَ الحَجَرِ الأَبْيَضِ فِي أَعْلَى الجَبَلِ.",
+    "اسْتَمَعَتِ الجَدَّةُ إِلَى أَحَادِيثِ أَحْفَادِهَا وَهِيَ تَبْتَسِمُ ابْتِسَامَةً حَانِيَةً.",
+    "رَكِبَ المُسَافِرُونَ القِطَارَ فِي الصَّبَاحِ الباكِرِ مُتَوَجِّهِينَ نَحْوَ السَّاحِلِ.",
+    "غَسَلَتِ الأُمُّ المَلَابِسَ وَعَلَّقَتْهَا فِي الحَدِيقَةِ تَحْتَ أَشِعَّةِ الشَّمْسِ الدَّافِئَةِ.",
+    "احْتَفَلَ أَهْلُ القَرْيَةِ بِمَوْسِمِ الحَصَادِ وَأَقَامُوا الوَلَائِمَ الكَبِيرَةَ.",
+    "نَظَرَ الصَّيَّادُ إِلَى الأُفُقِ البَعِيدِ حَيْثُ تَلْتَقِي السَّمَاءُ بِالبَحْرِ الهَادِئِ.",
+    "كَتَبَ الشَّاعِرُ قَصِيدَةً رَائِعَةً عَنْ جَمَالِ الوَطَنِ وَطِيبَةِ أَهْلِهِ.",
+    "تَسَلَّقَ المُغَامِرُونَ الجَبَلَ الشَّاهِقَ رَغْمَ صُعُوبَةِ الطَّرِيقِ وَبُرُودَةِ الطَّقْسِ.",
+    "أَعَدَّتِ الطَّبَّاخَةُ وَجْبَةً شَهِيَّةً مِلْؤُهَا التَّوَابِلُ وَالخُضَارُ الطَّازَجَةُ."
+  ]
+}
+
+================================================================================
+
+
+================================================================================
+FILE: plugins/Maqala.js
+================================================================================
+
+FILE INFORMATION:
+----------------------------------------
+Size: 13.71 KB
+Extension: .js
+Language: javascript
+Location: plugins/Maqala.js
+Relative Path: plugins
+Created: 2026-08-08 20:07:01 (Asia/Beirut / GMT+03:00)
+Modified: 2026-08-09 13:11:29 (Asia/Beirut / GMT+03:00)
+MD5: 0dadd4bd40ded94e6b1a57c2d10eaefb
+SHA256: abd89e7e058b04f12faef0e95a317edb04cb5ea8cccb5700b30aa57565f7b639
+Encoding: UTF-8
+
+FILE CONTENT:
+----------------------------------------
+import fs from 'node:fs';
+import path from 'node:path';
+import { recordWin } from '../lib/playerStats.js';
+import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { makeRecentTracker } from '../lib/recentPicks.js';
+import { getRandomWords } from './kat.js';
+
+// ============================================================================
+// مقالة command family — all four modes now share one mechanic:
+//   1. bot posts a challenge message
+//   2. any message in the chat is checked word-by-word against a remaining-count map (كت-style)
+//   3. reply is checked word-by-word against a remaining-count map (كت-style)
+//   4. incomplete/wrong -> "اكتب:" hint listing what's left, round continues
+//   5. complete -> WPM + time announced, a new challenge auto-starts
+//
+//   .مقه   — full sentence WITH تشكيل (from plugins/maqala-tashkeel.json)
+//   .مق    — full sentence, plain, from a random Arabic Wikipedia extract
+//   .مغر   — 5–15 random unrelated words from كت's word bank
+//   .مكرر  — same as مق, but the challenge is SHOWN as word(count) notation
+//   .سقه / .سق / .سكرر / .سغر — stop the matching mode specifically
+// ============================================================================
+
+const GAME_ID = 'maqalaGame';
+const GAME_LABEL_FOR_STATS = 'مقالة';
+
+const TASHKEEL_DATA_PATH = path.resolve('plugins/maqala-tashkeel.json');
+const WIKI_QUERY_API =
+  'https://ar.wikipedia.org/w/api.php?action=query&format=json&generator=random&grnnamespace=0&grnlimit=6&prop=extracts&exintro=1&explaintext=1&exsectionformat=plain';
+
+const STUB_PATTERNS = [
+  /عدد السكان/,
+  /قرية تقع/,
+  /قرية تابعة/,
+  /إحدى قرى/,
+  /ناحية تتبع/,
+  /هي قرية/,
+  /لاعب كرة قدم/,
+  /مواليد \d{4}/,
+  /هو ممثل/,
+  /هو مغني/
+];
+
+function isGoodQuality(text) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 7) return false;
+
+  const digitChars = (text.match(/[0-9\u0660-\u0669]/g) || []).length;
+  if (digitChars / text.length > 0.08) return false;
+
+  if (STUB_PATTERNS.some(re => re.test(text))) return false;
+
+  return true;
+}
+
+async function fetchWikiPhrase() {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      const res = await fetch(WIKI_QUERY_API, {
+        headers: { 'User-Agent': 'wa-bot/1.0 (maqala plugin)' }
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const pages = data?.query?.pages;
+      if (!pages) continue;
+
+      const candidates = Object.values(pages)
+        .map(p => cleanWikiExtract(p.extract || ''))
+        .filter(t => t && isGoodQuality(t));
+
+      if (candidates.length) {
+        const selected = candidates[Math.floor(Math.random() * candidates.length)];
+        const words = selected.split(/\s+/).filter(Boolean);
+        const targetLen = 5 + Math.floor(Math.random() * 3); // 5..7
+        return words.slice(0, targetLen).join(' ');
+      }
+    } catch (err) {
+      console.error('fetchWikiPhrase error:', err);
+    }
+  }
+  return null;
+}
+
+const MODE_LABELS = {
+  tashkeel: 'مقه (مشكولة)',
+  plain: 'مق (بدون تشكيل)',
+  salad: 'مغر (عشوائي)',
+  count: 'مكرر (تكراري)'
+};
+
+const STOP_MODE_MAP = { 'سقه': 'tashkeel', 'سق': 'plain', 'سكرر': 'count', 'سغر': 'salad' };
+
+// ---------------------------------------------------------------------------
+// tashkeel phrase bank (local JSON, hand-maintained)
+// ---------------------------------------------------------------------------
+
+function loadTashkeelPhrases() {
+  try {
+    const raw = fs.readFileSync(TASHKEEL_DATA_PATH, 'utf-8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data.phrases) ? data.phrases.filter(Boolean) : [];
+  } catch (err) {
+    console.error('Error loading maqala-tashkeel.json:', err);
+    return [];
+  }
+}
+
+const TASHKEEL_PHRASES = loadTashkeelPhrases();
+
+function pickTashkeelPhrase() {
+  if (!TASHKEEL_PHRASES.length) return null;
+  return TASHKEEL_PHRASES[Math.floor(Math.random() * TASHKEEL_PHRASES.length)];
+}
+
+// ---------------------------------------------------------------------------
+// Arabic Wikipedia random-article fetch (source for .مق and .مكرر)
+// ---------------------------------------------------------------------------
+
+function cleanWikiExtract(text) {
+  return text
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ---------------------------------------------------------------------------
+// text helpers
+// ---------------------------------------------------------------------------
+
+function stripHamza(text) {
+  return text
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '');
+}
+
+// comma after every word — breaks up the run of text so copy-pasting
+// elsewhere doesn't reproduce it cleanly
+function withCommas(text) {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => `${w.replace(/[،,.:؛!؟]+$/g, '')}،`)
+    .join(' ');
+}
+
+// word -> count map, used for matching AND (for مكرر) for display
+function buildCounts(rawPhrase) {
+  const words = normalizeLenient(rawPhrase).split(/[^\u0621-\u064A]+/).filter(Boolean);
+  if (words.length < 3) return null;
+  const counts = new Map();
+  for (const w of words) counts.set(w, (counts.get(w) || 0) + 1);
+  return counts;
+}
+
+function countsTotal(counts) {
+  let total = 0;
+  for (const c of counts.values()) total += c;
+  return total;
+}
+
+function countsDisplay(counts) {
+  return [...counts.entries()].map(([w, c]) => `${w}(${c})`).join(' ');
+}
+
+function computeWpm(totalWords, seconds) {
+  const minutes = seconds / 60;
+  if (minutes <= 0) return 0;
+  return totalWords / minutes;
+}
+
+const saladTracker = makeRecentTracker();
+
+function buildSaladWords(chatId) {
+  const count = 5 + Math.floor(Math.random() * 11); // 5..15
+  const words = getRandomWords(count, saladTracker.getExcluded(chatId));
+  if (!words.length) return null;
+  saladTracker.record(chatId, words.map(normalizeLenient));
+  return words.join(' ');
+}
+
+// ---------------------------------------------------------------------------
+// build one round: { counts, total, displayText } for a given mode
+// ---------------------------------------------------------------------------
+
+async function buildRound(mode, chatId) {
+  if (mode === 'tashkeel') {
+    const phrase = pickTashkeelPhrase();
+    if (!phrase) return null;
+    const counts = buildCounts(phrase);
+    if (!counts) return null;
+    return { counts, total: countsTotal(counts), displayText: withCommas(phrase) };
+  }
+
+  if (mode === 'plain') {
+    const phrase = await fetchWikiPhrase();
+    if (!phrase) return null;
+    const counts = buildCounts(phrase);
+    if (!counts) return null;
+    return { counts, total: countsTotal(counts), displayText: withCommas(stripHamza(phrase)) };
+  }
+
+  if (mode === 'salad') {
+    const phrase = buildSaladWords(chatId);
+    if (!phrase) return null;
+    const counts = buildCounts(phrase);
+    if (!counts) return null;
+    return { counts, total: countsTotal(counts), displayText: withCommas(phrase) };
+  }
+
+  if (mode === 'count') {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const phrase = await fetchWikiPhrase();
+      if (!phrase) continue;
+      const counts = buildCounts(phrase);
+      if (!counts) continue;
+      return { counts, total: countsTotal(counts), displayText: `*${countsDisplay(counts)}*` };
+    }
+    return null;
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// message extraction + global listener
+// ---------------------------------------------------------------------------
+
+function getText(m) {
+  return (
+    m.message?.conversation ||
+    m.message?.extendedTextMessage?.text ||
+    m.message?.imageMessage?.caption ||
+    m.message?.videoMessage?.caption ||
+    ''
+  );
+}
+
+const registeredSocks = new WeakSet();
+
+function ensureGlobalListener(ctx) {
+  if (registeredSocks.has(ctx.sock)) return;
+  registeredSocks.add(ctx.sock);
+
+  ctx.sock.ev.on('messages.upsert', ({ messages, type }) => {
+    if (type !== 'notify' && type !== 'append') return;
+
+    const store = ctx.store.namespace(GAME_ID);
+
+    for (const m of messages) {
+      if (!m.message || m.key.fromMe) continue;
+
+      const chatId = m.key.remoteJid;
+      const state = store.get(chatId);
+      if (!state) continue;
+
+      state.queue = state.queue
+        .then(() => processMessage(ctx, chatId, state, m))
+        .catch(err => console.error('مقالة game processing error:', err));
+    }
+  });
+}
+
+async function processMessage(ctx, chatId, state, m) {
+  const store = ctx.store.namespace(GAME_ID);
+  if (store.get(chatId) !== state) return;
+
+  const text = getText(m);
+  if (!text) return;
+
+  const normInput = normalizeLenient(text);
+  const incomingWords = normInput.split(/[^\u0621-\u064A]+/).filter(Boolean);
+  if (!incomingWords.length) return;
+
+  const senderJid = m.key.participant || m.key.remoteJid;
+
+  if (!state.players) state.players = {};
+  if (!state.players[senderJid]) {
+    state.players[senderJid] = { remaining: new Map(state.round.counts), matchedCount: 0 };
+  }
+  const player = state.players[senderJid];
+
+  let progressed = false;
+  let justWon = false;
+
+  for (const word of incomingWords) {
+    if (player.matchedCount >= state.round.total) break;
+    const left = player.remaining.get(word);
+    if (left && left > 0) {
+      player.remaining.set(word, left - 1);
+      player.matchedCount++;
+      progressed = true;
+      if (player.matchedCount === state.round.total) {
+        justWon = true;
+        break;
+      }
+    }
+  }
+
+  if (!justWon) {
+    if (progressed) {
+      const remainingWords = [];
+      for (const [word, count] of player.remaining.entries()) {
+        for (let c = 0; c < count; c++) remainingWords.push(word);
+      }
+      const mention = `@${senderJid.split('@')[0]}`;
+      const sent = await ctx.sock.sendMessage(chatId, {
+        text: `${mention} اكتب:\n${remainingWords.join(',')}`,
+        mentions: [senderJid]
+      }, { quoted: m }).catch(() => null);
+    }
+    return;
+  }
+
+  const seconds = Number(process.hrtime.bigint() - state.startTime) / 1e9;
+  const wpm = computeWpm(state.round.total, seconds);
+  const mention = `@${senderJid.split('@')[0]}`;
+
+  try {
+    await recordWin({
+      jid: senderJid,
+      game: GAME_LABEL_FOR_STATS,
+      timeTaken: seconds,
+      label: countsDisplay(state.round.counts),
+      answeredCount: state.round.total
+    });
+  } catch (err) {
+    console.error('recordWin failed (مقالة):', err);
+  }
+
+  const nextRound = await buildRound(state.mode, chatId);
+  if (!nextRound) {
+    await ctx.sock.sendMessage(chatId, {
+      text: `كفو يا ${mention}\n\nسرعتك: ${wpm.toFixed(2)} كلمة/دقيقة\nالوقت: ${seconds.toFixed(2)} ثانية\n\nتعذر جلب جولة جديدة، أوقف باستخدام الأمر المناسب.`,
+      mentions: [senderJid]
+    }).catch(() => {});
+    return;
+  }
+
+  state.round = nextRound;
+  state.players = {};
+  state.startTime = process.hrtime.bigint();
+
+  const winText = `كفو يا ${mention}\n\nسرعتك: ${wpm.toFixed(2)} كلمة/دقيقة\nالوقت: ${seconds.toFixed(2)} ثانية\n\n${nextRound.displayText}`;
+
+  const sent = await ctx.sock.sendMessage(chatId, { text: winText, mentions: [senderJid] }).catch(err => {
+    console.error('مقالة send error:', err);
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// stop
+// ---------------------------------------------------------------------------
+
+async function stopGame(ctx, expectedMode) {
+  const store = ctx.store.namespace(GAME_ID);
+
+  if (!store.has(ctx.chatId)) {
+    await ctx.reply('لا توجد مقالة شغالة حالياً.');
+    return;
+  }
+
+  const state = store.get(ctx.chatId);
+  if (state.mode !== expectedMode) {
+    await ctx.reply(`النشاط الحالي هو ${MODE_LABELS[state.mode]}. استخدم أمر الإيقاف الخاص به، أو .سكل لإيقاف أي نشاط.`);
+    return;
+  }
+
+  store.delete(ctx.chatId);
+  await ctx.reply(`تم إيقاف ${MODE_LABELS[state.mode]}.`);
+}
+
+// ---------------------------------------------------------------------------
+// start
+// ---------------------------------------------------------------------------
+
+async function startRound(ctx, mode) {
+  const round = await buildRound(mode, ctx.chatId);
+  if (!round) {
+    const hint = mode === 'tashkeel'
+      ? 'لا توجد عبارات مشكولة محفوظة (plugins/maqala-tashkeel.json فارغ).'
+      : 'تعذر جلب مقالة جديدة، حاول مرة أخرى.';
+    await ctx.reply(hint);
+    return;
+  }
+
+  const store = ctx.store.namespace(GAME_ID);
+  const state = {
+    mode,
+    round,
+    players: {},
+    startTime: process.hrtime.bigint(),
+    queue: Promise.resolve()
+  };
+  store.set(ctx.chatId, state);
+
+  const sent = await ctx.sock.sendMessage(ctx.chatId, { text: round.displayText });
+}
+
+export default {
+  name: 'مقه',
+  aliases: ['مق', 'مكرر', 'مغر', 'سقه', 'سق', 'سكرر', 'سغر'],
+  description: 'عائلة أوامر المقالة: .مقه / .مق / .مغر / .مكرر — أي رسالة في الكروب تُفحص كلمة بكلمة. وقف بـ .سقه/.سق/.سكرر/.سغر',
+  cooldown: 0,
+
+  async execute(ctx) {
+    ensureGlobalListener(ctx);
+
+    const commandUsed = ctx.command.toLowerCase();
+
+    if (STOP_MODE_MAP[commandUsed]) {
+      await stopGame(ctx, STOP_MODE_MAP[commandUsed]);
+      return;
+    }
+
+    ctx.store.stopAllGames(ctx);
+    ctx.store.namespace('reverseGame').delete(ctx.chatId);
+    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+
+    const modeMap = { 'مقه': 'tashkeel', 'مق': 'plain', 'مغر': 'salad', 'مكرر': 'count' };
+    const mode = modeMap[commandUsed];
+    if (mode) await startRound(ctx, mode);
+  }
+};
+
+================================================================================
+
+
+================================================================================
 FILE: plugins/pic.js
 ================================================================================
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 8.7 KB
+Size: 8.76 KB
 Extension: .js
 Language: javascript
 Location: plugins/pic.js
 Relative Path: plugins
 Created: 2026-07-20 21:23:24 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 07:20:38 (Asia/Beirut / GMT+03:00)
-MD5: bf10bb6a4b9f587fb50f211d57a3e301
-SHA256: 669a3f4d18881653d73326ce3852e88be0fc38963878cc15ea9d5c352f948c6c
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: 91240c56966244e0269c320758332b6b
+SHA256: 5b78fa9c03d01d5637832f7ca21dfdbb4d1520fcab2ca1afcf9d50844b661a08
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -2918,6 +3476,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { recordWin } from '../lib/playerStats.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const IMAGES_DIR = path.resolve('saved_images');
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
@@ -3158,7 +3717,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     const [firstItem] = pickRandom(list, 1);
     const state = {
@@ -3226,15 +3785,15 @@ FILE: plugins/reverse-tafkik.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 7.54 KB
+Size: 7.61 KB
 Extension: .js
 Language: javascript
 Location: plugins/reverse-tafkik.js
 Relative Path: plugins
 Created: 2026-07-29 07:42:52 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:33 (Asia/Beirut / GMT+03:00)
-MD5: 7933860792782051438eab45d8212568
-SHA256: 3a02ffb9ae3cc7a0d5e3c2d5f34db5952053cffea5a5dc5959aa8bcfaa44d384
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: 3aafb4fafa79e42fee1b88be191c99fe
+SHA256: 2b33797b177930e580c164290f108fe25fae9e99035ea67d9ba3968a54d1bf71
 Encoding: ASCII
 
 FILE CONTENT:
@@ -3244,6 +3803,7 @@ import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const recentTracker = makeRecentTracker();
 
@@ -3437,7 +3997,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 
@@ -3488,15 +4048,15 @@ FILE: plugins/reverse.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 7.79 KB
+Size: 7.85 KB
 Extension: .js
 Language: javascript
 Location: plugins/reverse.js
 Relative Path: plugins
 Created: 2026-07-29 07:42:52 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:33 (Asia/Beirut / GMT+03:00)
-MD5: 5c2a7039339d51a7d3b81e5921325778
-SHA256: 993bd72e2b282bdb57dc39b5455a5a74b735b1cb76978feb025172c80be7813a
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: ebe5028bfd6ebd82f4bb6ffae1f55a78
+SHA256: bb0dc4617d4c6b4995cbcae8c8c7390b005a7aa7e02a755e18e91c54a27a8599
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -3506,6 +4066,7 @@ export { reverseTracker as recentTracker };
 import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export function reverseNormalized(text) {
   return text.split('').reverse().join('');
@@ -3709,7 +4270,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 
@@ -4020,15 +4581,15 @@ FILE: plugins/ss.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 13.16 KB
+Size: 13.1 KB
 Extension: .js
 Language: javascript
 Location: plugins/ss.js
 Relative Path: plugins
 Created: 2026-07-21 09:04:05 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:34 (Asia/Beirut / GMT+03:00)
-MD5: 57ec97ad9c83893b3f9015ccb5d54567
-SHA256: 31a5709b7a6e5aec51d10430e6f03acc55dd9db9e911d40d37765579593e4b0f
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: 0582ddeff1c57793577055a652cab2f8
+SHA256: 3b840fa6cf5a0000b73429c5b5951a7cdb151509572ddc80a9a0b7c1265b3434
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -4039,6 +4600,7 @@ import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const SS_POOL = await loadCategory('سس');
 
@@ -4364,10 +4926,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (!SS_POOL.length) {
       await ctx.reply('علقت');
@@ -4608,19 +5167,21 @@ FILE: plugins/stopall.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 1.75 KB
+Size: 1.37 KB
 Extension: .js
 Language: javascript
 Location: plugins/stopall.js
 Relative Path: plugins
 Created: 2026-07-20 23:16:03 (Asia/Beirut / GMT+03:00)
-Modified: 2026-08-08 20:06:10 (Asia/Beirut / GMT+03:00)
-MD5: 42fec62bd2f8ef3836886da3bfb3d559
-SHA256: 00a31cfea55d6e2c91c240ec85adb5ed2fae95e2896ff4b6fa8948cc8c66b951
+Modified: 2026-08-08 20:32:07 (Asia/Beirut / GMT+03:00)
+MD5: ab42123dee31ce9ceb5f1a58f79929f8
+SHA256: 32318bc2c45361eaefebf0e97f2559984de235d16ecff08b75769ca10b6927c9
 Encoding: UTF-8
 
 FILE CONTENT:
 ----------------------------------------
+import { GAME_REGISTRY } from '../lib/games.js';
+
 export default {
   name: 'سكل',
   aliases: ['انهاء', 'stopall'],
@@ -4631,19 +5192,7 @@ export default {
     const { sock, chatId, store, reply } = ctx;
     let stoppedAny = false;
 
-    const games = [
-      { id: 'katGame', name: 'كت' },
-      { id: 'tafkikGame', name: 'تفكيك' },
-      { id: 'tournamentGame', name: 'بطولة' },
-      { id: 'ta3Game', name: 'تع/3' },
-      { id: 'picGame', name: 'الصور' },
-      { id: 'ssGame', name: 'س/سس' },
-      { id: 'reverseGame', name: 'عكس' },
-      { id: 'reverseTafkikGame', name: 'عكس تفكيك' },
-      { id: 'maqalaGame', name: 'مقالة' }
-    ];
-
-    for (const game of games) {
+    for (const game of GAME_REGISTRY) {
       const state = store.namespace(game.id).get(chatId);
 
       if (state) {
@@ -4680,15 +5229,15 @@ FILE: plugins/ta3.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 11.89 KB
+Size: 11.83 KB
 Extension: .js
 Language: javascript
 Location: plugins/ta3.js
 Relative Path: plugins
 Created: 2026-07-20 15:31:01 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:35 (Asia/Beirut / GMT+03:00)
-MD5: d13842ede4b5c86c833801e7d5d865cd
-SHA256: 5d5b7751518324d3dca64d7ae3b39021938cfd52d4d7b9754a731bd1533ec3de
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: bcf2d315c9473f3ec86050afc7db967c
+SHA256: da7479349bf8cae9b664e8b11dbd7e6a02c2faa1709ee3d303330bc1e14668e2
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -4699,6 +5248,7 @@ import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { findAnswerCollisions } from '../lib/duplicateCheck.js';
 import { normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const TA3_POOL = await loadCategory('تع');
 
@@ -5011,10 +5561,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (!TA3_POOL.length) {
       await ctx.reply('علقت');
@@ -5054,15 +5601,15 @@ FILE: plugins/tafkik.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 8.55 KB
+Size: 8.49 KB
 Extension: .js
 Language: javascript
 Location: plugins/tafkik.js
 Relative Path: plugins
 Created: 2026-07-25 12:14:50 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 11:02:35 (Asia/Beirut / GMT+03:00)
-MD5: 02eb29af6f07ab00bb7ecf5459bfca97
-SHA256: bae432da18f7b1d225de4e0097007313b7823081847597bab672a1cfedf819e9
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: ee73bcfe356dfc98ecfa8283f7e0adbc
+SHA256: f41762010d97f72817d3f54ff5a301c0290389fd4becea8da8a925b2eff26dc4
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -5076,6 +5623,7 @@ import { recordWin } from '../lib/playerStats.js';
 import { measureDeliveryLatency, updateLatencyBaseline } from '../lib/latency.js';
 import { makeRecentTracker } from '../lib/recentPicks.js';
 import { normalizeLenient } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 export const recentTracker = makeRecentTracker();
 
@@ -5279,10 +5827,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     let count = 1; // default 1, only change when user types a number
 
@@ -5332,15 +5877,15 @@ FILE: plugins/Tournament.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 14.75 KB
+Size: 14.68 KB
 Extension: .js
 Language: javascript
 Location: plugins/Tournament.js
 Relative Path: plugins
 Created: 2026-07-29 06:41:56 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-29 07:43:53 (Asia/Beirut / GMT+03:00)
-MD5: 83234e41d766d406d39232c06f2faa9c
-SHA256: 49e6be19fc8994f0096116b0d52ecce7974fee7dc6ba0c109572d98601645acf
+Modified: 2026-08-08 20:31:54 (Asia/Beirut / GMT+03:00)
+MD5: 2115eefcdb54a3dbab0fd875d0509724
+SHA256: 68d7a6882bd7acc59108eeaea88991ddda7953c8711ac6cb123f6b6d16437b61
 Encoding: UTF-8
 
 FILE CONTENT:
@@ -5366,6 +5911,7 @@ import { getRandomQuestion as ssGetRandomQuestion, recentTracker as ssRecentTrac
 import { getRandomQuestion as ta3GetRandomQuestion, recentTracker as ta3RecentTracker, buildAnswersMap } from './ta3.js';
 import { getLocalImageList, pickRandom as pickRandomImage } from './pic.js';
 import { normalizeLenient, normalizeStrict } from '../lib/normalizeArabic.js';
+import { stopAllGamesWithReport } from '../lib/games.js';
 
 const SECTION_ORDER = ['tafkik', 'pic', 'mixed', 'kat'];
 const FIXED_TARGET = 5;
@@ -5705,10 +6251,7 @@ export default {
       return;
     }
 
-    ctx.store.stopAllGames(ctx);
-
-    ctx.store.namespace('reverseGame').delete(ctx.chatId);
-    ctx.store.namespace('reverseTafkikGame').delete(ctx.chatId);
+    await stopAllGamesWithReport(ctx);
 
     if (commandUsed === 'بدء') {
       ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {
@@ -6039,15 +6582,15 @@ FILE: index.js
 
 FILE INFORMATION:
 ----------------------------------------
-Size: 3.91 KB
+Size: 4.28 KB
 Extension: .js
 Language: javascript
 Location: index.js
 Relative Path: root
 Created: 2026-07-19 16:33:50 (Asia/Beirut / GMT+03:00)
-Modified: 2026-07-26 18:08:26 (Asia/Beirut / GMT+03:00)
-MD5: 47f5547062fe71358d8fd63d89a7000f
-SHA256: 41cfdd1f3c2ee7e9def299886bba439fba2682e71dd88a36c6f50b2f7db6bed3
+Modified: 2026-08-10 17:25:31 (Asia/Beirut / GMT+03:00)
+MD5: c48fcf6138770eb2780cf75c68118b89
+SHA256: 35df4c51c826e724540b7e3a9e87d50e8438f3510da2183d004c1b1cdadffce9
 Encoding: ASCII
 
 FILE CONTENT:
@@ -6102,6 +6645,7 @@ async function start() {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, baileysLogger)
     },
+    usePairingCode: process.env.USE_PAIRING_CODE === 'true',
     syncFullHistory: false,
     markOnlineOnConnect: false
   });
@@ -6109,7 +6653,14 @@ async function start() {
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
+    const { connection, lastDisconnect, qr, pairingCode } = update;
+
+    if (pairingCode) {
+      console.log('========================================');
+      console.log('Pairing code:', pairingCode);
+      console.log('Enter this code in WhatsApp → Linked devices → Link a device → Enter code');
+      console.log('========================================');
+    }
 
     if (qr) {
       qrcode.generate(qr, { small: true });
