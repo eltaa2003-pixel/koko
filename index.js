@@ -55,6 +55,18 @@ async function start() {
 
   sock.ev.on('creds.update', saveCreds);
 
+  if (!sock.authState.creds.registered && process.env.USE_PAIRING_CODE === 'true') {
+    const phoneNumber = process.env.PHONE_NUMBER;
+    setTimeout(async () => {
+      try {
+        const code = await sock.requestPairingCode(phoneNumber);
+        console.log('Pairing code:', code);
+      } catch (e) {
+        console.log('Pairing code request failed:', e);
+      }
+    }, 3000);
+  }
+
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr, pairingCode } = update;
 

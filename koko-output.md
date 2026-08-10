@@ -3,7 +3,7 @@
 ## 📊 Project Information
 
 - **Project Name**: `koko`
-- **Generated On**: 2026-08-10 17:27:13 (Asia/Beirut / GMT+03:00)
+- **Generated On**: 2026-08-10 17:33:09 (Asia/Beirut / GMT+03:00)
 - **Total Files Processed**: 207
 - **Export Tool**: Easy Whole Project to Single Text File for LLMs v1.1.0
 - **Tool Author**: Jota / José Guilherme Pandolfi
@@ -227,7 +227,7 @@
 ├── 📁 scripts/
 │   └── 📄 migrate-game-data.js (1.67 KB)
 ├── 📄 config.js (298 B)
-├── 📄 index.js (4.28 KB)
+├── 📄 index.js (4.78 KB)
 ├── 📄 package-lock.json (119.38 KB)
 ├── 📄 package.json (573 B)
 └── 📄 README.md (2.24 KB)
@@ -6589,15 +6589,15 @@ export const DEFAULT_COOLDOWN = 2;
 ### <a id="📄-index-js"></a>📄 `index.js`
 
 **File Info:**
-- **Size**: 4.28 KB
+- **Size**: 4.78 KB
 - **Extension**: `.js`
 - **Language**: `javascript`
 - **Location**: `index.js`
 - **Relative Path**: `root`
 - **Created**: 2026-07-19 16:33:50 (Asia/Beirut / GMT+03:00)
-- **Modified**: 2026-08-10 17:25:31 (Asia/Beirut / GMT+03:00)
-- **MD5**: `c48fcf6138770eb2780cf75c68118b89`
-- **SHA256**: `35df4c51c826e724540b7e3a9e87d50e8438f3510da2183d004c1b1cdadffce9`
+- **Modified**: 2026-08-10 17:32:14 (Asia/Beirut / GMT+03:00)
+- **MD5**: `5f01e0e825185635fca58d34d6053748`
+- **SHA256**: `9d09074c9b9815b8368ca9b1ad2cf374f51e8cd6d5911a77d81f8d8d2b8399b6`
 - **Encoding**: ASCII
 
 **File code content:**
@@ -6659,6 +6659,20 @@ async function start() {
   });
 
   sock.ev.on('creds.update', saveCreds);
+
+  if (!sock.authState.creds.registered && process.env.USE_PAIRING_CODE === 'true') {
+    try {
+      const phoneNumber = process.env.PHONE_NUMBER;
+      if (!phoneNumber) {
+        console.log('USE_PAIRING_CODE is true but PHONE_NUMBER is not set — waiting for QR or pairing code event');
+      } else {
+        const code = await sock.requestPairingCode(phoneNumber);
+        console.log('Pairing code:', code);
+      }
+    } catch (err) {
+      console.error('Pairing code request failed:', err);
+    }
+  }
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr, pairingCode } = update;
