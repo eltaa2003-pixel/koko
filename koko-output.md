@@ -3,8 +3,8 @@
 ## 📊 Project Information
 
 - **Project Name**: `koko`
-- **Generated On**: 2026-08-10 17:33:09 (Asia/Beirut / GMT+03:00)
-- **Total Files Processed**: 207
+- **Generated On**: 2026-08-11 15:53:42 (Asia/Beirut / GMT+03:00)
+- **Total Files Processed**: 206
 - **Export Tool**: Easy Whole Project to Single Text File for LLMs v1.1.0
 - **Tool Author**: Jota / José Guilherme Pandolfi
 
@@ -36,7 +36,6 @@
 │   └── 📄 store.js (751 B)
 ├── 📁 plugins/
 │   ├── 📄 Addq.js (8.73 KB)
-│   ├── 📄 c.js (5.48 KB)
 │   ├── 📄 cat.js (1.13 KB)
 │   ├── 📄 game-data.json (51.44 KB)
 │   ├── 📄 kat.js (9.66 KB)
@@ -227,7 +226,7 @@
 ├── 📁 scripts/
 │   └── 📄 migrate-game-data.js (1.67 KB)
 ├── 📄 config.js (298 B)
-├── 📄 index.js (4.78 KB)
+├── 📄 index.js (4.66 KB)
 ├── 📄 package-lock.json (119.38 KB)
 ├── 📄 package.json (573 B)
 └── 📄 README.md (2.24 KB)
@@ -251,7 +250,6 @@
 - [📄 lib/recentPicks.js](#📄-lib-recentpicks-js)
 - [📄 lib/store.js](#📄-lib-store-js)
 - [📄 plugins/Addq.js](#📄-plugins-addq-js)
-- [📄 plugins/c.js](#📄-plugins-c-js)
 - [📄 plugins/cat.js](#📄-plugins-cat-js)
 - [📄 plugins/game-data.json](#📄-plugins-game-data-json)
 - [📄 plugins/kat.js](#📄-plugins-kat-js)
@@ -284,9 +282,9 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Files | 207 |
+| Total Files | 206 |
 | Total Directories | 4 |
-| Text Files | 40 |
+| Text Files | 39 |
 | Binary Files | 167 |
 | Total Size | 10.05 MB |
 
@@ -295,7 +293,7 @@
 | Extension | Count |
 |-----------|-------|
 | `.jpeg` | 167 |
-| `.js` | 35 |
+| `.js` | 34 |
 | `.json` | 4 |
 | `.md` | 1 |
 
@@ -1376,182 +1374,6 @@ export default {
     await ctx.reply('لأي فئة تريد إضافة السؤال؟\n1. سس\n2. تع\n\n(اكتب الغاء في أي وقت للتراجع)');
   }
 };
-```
-
----
-
-### <a id="📄-plugins-c-js"></a>📄 `plugins/c.js`
-
-**File Info:**
-- **Size**: 5.48 KB
-- **Extension**: `.js`
-- **Language**: `javascript`
-- **Location**: `plugins/c.js`
-- **Relative Path**: `plugins`
-- **Created**: 2026-08-07 21:48:20 (Asia/Beirut / GMT+03:00)
-- **Modified**: 2026-08-08 18:21:44 (Asia/Beirut / GMT+03:00)
-- **MD5**: `14849f98c7b6cd8daf0622393b3d19a3`
-- **SHA256**: `573892e277c698e11b5090db62b0bf4fb405dfabb8fa105903392a5c2c620ea6`
-- **Encoding**: ASCII
-
-**File code content:**
-
-```javascript
-const CHECK_TTL_NS = 30n * 60n * 1000000000n;
-const BATCH_SIZE = 100;
-const BATCH_DELAY_MS = 2000;
-
-function extractNumbers(text) {
-  if (!text) return [];
-  const matches = text.match(/\+?[\d\s\-\(\)]{7,20}/g) || [];
-  return matches
-    .map(n => n.replace(/[\s\-\(\)]/g, '').replace(/^\+/, ''))
-    .filter(n => /^\d{7,15}$/.test(n));
-}
-
-async function checkNumber(sock, number) {
-  try {
-    const result = await sock.onWhatsApp(`${number}@s.whatsapp.net`);
-    return result[0]?.exists || false;
-  } catch (err) {
-    console.error(`check error for ${number}:`, err);
-    return false;
-  }
-}
-
-async function getHistory(store, number) {
-  return store.get(number) || null;
-}
-
-async function recordCheck(store, number, exists) {
-  const prev = store.get(number);
-  const entry = {
-    exists,
-    checkedAt: Number(process.hrtime.bigint()),
-    count: (prev?.count || 0) + 1
-  };
-  store.set(number, entry);
-  return entry;
-}
-
-function formatDuration(ns) {
-  const hours = Number(ns / 3600000000000n);
-  if (hours < 1) return 'أقل من ساعة';
-  if (hours === 1) return 'ساعة واحدة';
-  if (hours < 24) return `${hours} ساعات`;
-  const days = Math.floor(hours / 24);
-  const rem = hours % 24;
-  if (!rem) return days === 1 ? 'يوم واحد' : `${days} أيام`;
-  return `${days} يوم و ${rem} ساعة`;
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-export default {
-  name: 'c',
-  aliases: ['check', 'تحقق'],
-  description: 'التحقق من الأرقام المسجلة في واتساب (رد على رسالة تحتوي أرقام)',
-  cooldown: 10,
-
-  async execute(ctx) {
-    if (!ctx.msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-      await ctx.reply('رد على رسالة تحتوي أرقام لفحصها.');
-      return;
-    }
-
-    const quoted = ctx.msg.message.extendedTextMessage.contextInfo.quotedMessage;
-    const sourceText = quoted.conversation || quoted.extendedTextMessage?.text || '';
-    const rawNumbers = extractNumbers(sourceText);
-    const numbers = [...new Set(rawNumbers)];
-
-    if (!numbers.length) {
-      await ctx.reply('لم يتم العثور على أرقام صالحة في الرسالة.');
-      return;
-    }
-
-    const totalBatches = Math.ceil(numbers.length / BATCH_SIZE);
-    await ctx.reply(`تم العثور على ${numbers.length} رقم (${totalBatches} دفعة). جاري الفحص...`);
-
-    const historyStore = ctx.store.namespace('waCheckHistory');
-    const now = BigInt(process.hrtime.bigint());
-    const COOLDOWN_NS = 24n * 3600000000000n;
-
-    const allRegistered = [];
-    const allUnregistered = [];
-    const allFresh = [];
-    const allPreviouslyChecked = [];
-    const recentlyTried = [];
-
-    for (let i = 0; i < numbers.length; i += BATCH_SIZE) {
-      const batch = numbers.slice(i, i + BATCH_SIZE);
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-
-      if (batchNum > 1) {
-        await ctx.reply(`الدفعة ${batchNum - 1}/${totalBatches} مكتملة. جاري الدفعة ${batchNum}/${totalBatches}...`);
-        await sleep(BATCH_DELAY_MS);
-      }
-
-      for (const num of batch) {
-        const history = await getHistory(historyStore, num);
-        if (history) {
-          allPreviouslyChecked.push({ num, history });
-          if (history.exists) allRegistered.push(num);
-          else {
-            allUnregistered.push(num);
-            const age = now - BigInt(history.checkedAt);
-            if (age < COOLDOWN_NS) {
-              recentlyTried.push({ num, history, remaining: COOLDOWN_NS - age });
-            }
-          }
-        } else {
-          allFresh.push(num);
-          const exists = await checkNumber(ctx.sock, num);
-          await recordCheck(historyStore, num, exists);
-          if (exists) allRegistered.push(num);
-          else {
-            allUnregistered.push(num);
-            recentlyTried.push({ num, history: { exists, checkedAt: Number(process.hrtime.bigint()), count: 1 }, remaining: COOLDOWN_NS });
-          }
-        }
-      }
-    }
-
-    await ctx.reply(`اكتمل الفحص! جاري تجميع النتائج...`);
-
-    const fmt = (arr) => arr.map(n => `+${n}`).join('\n');
-
-    const lines = [];
-    if (allFresh.length) lines.push(`أرقام جديدة لم يُفحصها أحد من قبل (${allFresh.length}):\n${fmt(allFresh)}`);
-    if (allPreviouslyChecked.length) {
-      const detail = allPreviouslyChecked.map(({ num, history }) => {
-        const age = now - BigInt(history.checkedAt);
-        const suffix = !history.exists && age < COOLDOWN_NS ? ` ⚠️ ${formatDuration(COOLDOWN_NS - age)} متبقي` : '';
-        return `+${num} (${history.count} فحص${suffix})`;
-      }).join('\n');
-      lines.push(`أرقام تم فحصها سابقاً (${allPreviouslyChecked.length}):\n${detail}`);
-    }
-
-    if (!allRegistered.length && !allUnregistered.length) {
-      await ctx.reply('لا توجد أرقام للعرض.');
-      return;
-    }
-
-    const header = [];
-    if (allRegistered.length) header.push(`مسجلة (${allRegistered.length}):\n${fmt(allRegistered)}`);
-    if (allUnregistered.length) {
-      const suffix = recentlyTried.length ? `\n⚠️ الأرقام المُعلَّمة تحتاج 24 ساعة على الأقل قبل المحاولة مجدداً` : '';
-      header.push(`غير مسجلة (${allUnregistered.length}):\n${fmt(allUnregistered)}${suffix}`);
-    }
-
-    const body = [header.join('\n\n')];
-    if (lines.length) body.push(lines.join('\n\n'));
-
-    await ctx.reply(body.filter(Boolean).join('\n\n'));
-  }
-};
-
 ```
 
 ---
@@ -6589,15 +6411,15 @@ export const DEFAULT_COOLDOWN = 2;
 ### <a id="📄-index-js"></a>📄 `index.js`
 
 **File Info:**
-- **Size**: 4.78 KB
+- **Size**: 4.66 KB
 - **Extension**: `.js`
 - **Language**: `javascript`
 - **Location**: `index.js`
 - **Relative Path**: `root`
 - **Created**: 2026-07-19 16:33:50 (Asia/Beirut / GMT+03:00)
-- **Modified**: 2026-08-10 17:32:14 (Asia/Beirut / GMT+03:00)
-- **MD5**: `5f01e0e825185635fca58d34d6053748`
-- **SHA256**: `9d09074c9b9815b8368ca9b1ad2cf374f51e8cd6d5911a77d81f8d8d2b8399b6`
+- **Modified**: 2026-08-10 17:34:38 (Asia/Beirut / GMT+03:00)
+- **MD5**: `279942ff9f20d945eada568f49895a42`
+- **SHA256**: `f6dc90a22f83f624e9cfa143642610dc9bb74bf74332e71e1c1841d165eeeb21`
 - **Encoding**: ASCII
 
 **File code content:**
@@ -6661,17 +6483,15 @@ async function start() {
   sock.ev.on('creds.update', saveCreds);
 
   if (!sock.authState.creds.registered && process.env.USE_PAIRING_CODE === 'true') {
-    try {
-      const phoneNumber = process.env.PHONE_NUMBER;
-      if (!phoneNumber) {
-        console.log('USE_PAIRING_CODE is true but PHONE_NUMBER is not set — waiting for QR or pairing code event');
-      } else {
+    const phoneNumber = process.env.PHONE_NUMBER;
+    setTimeout(async () => {
+      try {
         const code = await sock.requestPairingCode(phoneNumber);
         console.log('Pairing code:', code);
+      } catch (e) {
+        console.log('Pairing code request failed:', e);
       }
-    } catch (err) {
-      console.error('Pairing code request failed:', err);
-    }
+    }, 3000);
   }
 
   sock.ev.on('connection.update', (update) => {
