@@ -54,15 +54,17 @@ async function imageToWebp(inputPath, outputPath) {
 async function videoToAnimatedWebp(inputPath, outputPath) {
   await execFilePromise(ffmpegPath, [
     '-y', '-i', inputPath,
-    // fps=10 keeps frame count (and therefore size) down — WhatsApp stickers
-    // don't need to be silky smooth, and this is the single biggest lever
-    // on staying under the size limit for anything longer than ~2 seconds.
-    '-vf', `fps=10,${SCALE_ONLY}`,
+    // fps=15 with lanczos scaling + palette generation gives cleaner motion
+    // and more accurate colors for anime/character content than the old fps=10
+    // libwebp-default quant path. The two-pass palette step is the main reason
+    // this no longer looks muddy, and removing -vsync 0 stops ffmpeg from
+    // inserting duplicate frames when it tries to reconcile VFR input with
+    // the fps filter.
+    '-vf', `scale='min(512,iw)':'min(512,ih)':force_original_aspect_ratio=decrease:flags=lanczos,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0,split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse`,
     '-vcodec', 'libwebp',
     '-loop', '0',
-    '-preset', 'default',
+    '-preset', 'drawing',
     '-an',
-    '-vsync', '0',
     '-q:v', '50',
     '-compression_level', '6',
     outputPath
