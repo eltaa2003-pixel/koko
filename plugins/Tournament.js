@@ -49,20 +49,26 @@ function containsSeq(arr, seq) {
 
 // ---- per-game question pickers -------------------------------------
 
-function pickKatQuestion(chatId) {
-  const words = getKatWords(1, katRecentTracker.getExcluded(chatId));
-  const word = words[0];
-  const norm = normalizeLenient(word);
-  katRecentTracker.record(chatId, [norm]);
-  return { type: 'kat', tokens: norm.split(' ').filter(Boolean), display: `*كت/ ${word}*` };
+function pickKatQuestion(chatId, wordCount = 1) {
+  const words = getKatWords(wordCount, katRecentTracker.getExcluded(chatId));
+  const norms = words.map(w => normalizeLenient(w));
+  katRecentTracker.record(chatId, norms);
+  return {
+    type: 'kat',
+    tokens: norms.map(n => n.split(' ').filter(Boolean)),
+    display: `*كت/ ${words.join(' - ')}*`
+  };
 }
 
-function pickTafkikQuestion(chatId) {
-  const words = getKatWords(1, tafkikRecentTracker.getExcluded(chatId));
-  const word = words[0];
-  const norm = normalizeLenient(word);
-  tafkikRecentTracker.record(chatId, [norm]);
-  return { type: 'tafkik', letterSeq: buildLetterSeqs([norm])[0], display: `*${word}*` };
+function pickTafkikQuestion(chatId, wordCount = 1) {
+  const words = getKatWords(wordCount, tafkikRecentTracker.getExcluded(chatId));
+  const norms = words.map(w => normalizeLenient(w));
+  tafkikRecentTracker.record(chatId, norms);
+  return {
+    type: 'tafkik',
+    letterSeqs: buildLetterSeqs(norms),
+    display: `*${words.join(' - ')}*`
+  };
 }
 
 function pickMixedQuestion(chatId, subGame) {
@@ -87,17 +93,17 @@ function pickPicQuestion(excludeItem) {
 
 // ---- section lifecycle -----------------------------------------------
 
-function initSection(sectionType, chatId) {
-  if (sectionType === 'kat') return pickKatQuestion(chatId);
-  if (sectionType === 'tafkik') return pickTafkikQuestion(chatId);
+function initSection(sectionType, chatId, wordCount) {
+  if (sectionType === 'kat') return pickKatQuestion(chatId, wordCount);
+  if (sectionType === 'tafkik') return pickTafkikQuestion(chatId, wordCount);
   if (sectionType === 'mixed') return pickMixedQuestion(chatId, 'ss'); // mixed section always opens on سس
   if (sectionType === 'pic') return pickPicQuestion(null);
   return null;
 }
 
-function nextQuestionSameSection(chatId, current) {
-  if (current.type === 'kat') return pickKatQuestion(chatId);
-  if (current.type === 'tafkik') return pickTafkikQuestion(chatId);
+function nextQuestionSameSection(chatId, current, wordCount) {
+  if (current.type === 'kat') return pickKatQuestion(chatId, wordCount);
+  if (current.type === 'tafkik') return pickTafkikQuestion(chatId, wordCount);
   if (current.type === 'pic') return pickPicQuestion(current.item);
   // mixed — flip سس/تع every question
   const nextSub = current.subGame === 'ss' ? 'ta3' : 'ss';
@@ -167,34 +173,47 @@ async function handlePendingStart(ctx, chatId, pending, m) {
 
   if (process.hrtime.bigint() - pending.timestamp > 120000000000000n) {
     pendingStore.delete(chatId);
-    await ctx.sock.sendMessage(chatId, { text: 'انتهت المهلة. أرسل .بدء مجدداً إذا أردت.' }, { quoted: m }).catch(() => {});
+    await ctx.sock.sendMessage(chatId, { text: 'انتهت المهلة. أرسل .بدء أو .بدا مجدداً إذا أردت.' }, { quoted: m }).catch(() => {});
     return;
   }
 
   const text = m.message?.conversation || m.message?.extendedTextMessage?.text || '';
   if (!text) return;
 
-  const target = parseInt(text.trim(), 10);
-  if (!Number.isInteger(target) || target < 1) {
+  const value = parseInt(text.trim(), 10);
+  if (!Number.isInteger(value) || value < 1) {
     await ctx.sock.sendMessage(chatId, { text: 'أرسل رقماً صحيحاً أكبر من 0.' }, { quoted: m }).catch(() => {});
     return;
   }
 
+  if (pending.step === 'target') {
+    pendingStore.set(chatId, {
+      step: 'wordCount',
+      mode: 'fixed',
+      target: value,
+      timestamp: process.hrtime.bigint()
+    });
+    await ctx.sock.sendMessage(chatId, { text: 'كم اسم بدك بقسم التفكيك والكت؟ أرسل رقماً.' }, { quoted: m }).catch(() => {});
+    return;
+  }
+
+  // step === 'wordCount'
   pendingStore.delete(chatId);
+  const wordCount = value;
 
   const sections = SECTION_ORDER.slice();
-  const current = initSection(sections[0], chatId);
-
+  const current = initSection(sections[0], chatId, wordCount);
   if (!current) {
     await ctx.sock.sendMessage(chatId, { text: 'فيه غلط' }).catch(() => {});
     return;
   }
 
   const state = {
-    mode: 'fixed',
+    mode: pending.mode,
     sections,
     sectionIndex: 0,
-    sectionTarget: target,
+    sectionTarget: pending.mode === 'random' ? randomTarget() : pending.target,
+    wordCount,
     sectionScores: {},
     scores: {},
     current,
@@ -228,10 +247,10 @@ async function processMessage(ctx, chatId, state, m) {
 
   if (current.type === 'kat') {
     const words = normalizeLenient(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
-    won = containsSeq(words, current.tokens);
+    won = current.tokens.every(seq => containsSeq(words, seq));
   } else if (current.type === 'tafkik') {
     const letters = normalizeLenient(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
-    won = containsSeq(letters, current.letterSeq);
+    won = current.letterSeqs.every(seq => containsSeq(letters, seq));
   } else if (current.type === 'pic') {
     const words = normalizeStrict(text).split(/[^\u0621-\u064A]+/).filter(Boolean);
     won = current.answerVariants.some(variant => containsSeq(words, variant.split(' ').filter(Boolean)));
@@ -294,9 +313,9 @@ async function processMessage(ctx, chatId, state, m) {
     state.sectionScores = {};
     state.sectionTarget = state.mode === 'random' ? randomTarget() : FIXED_TARGET;
     await ctx.sock.sendMessage(chatId, { text: `القسم القادم: ${SECTION_LABELS[state.sections[state.sectionIndex]]}` }).catch(() => {});
-    nextCurrent = initSection(state.sections[state.sectionIndex], chatId);
+    nextCurrent = initSection(state.sections[state.sectionIndex], chatId, state.wordCount);
   } else {
-    nextCurrent = nextQuestionSameSection(chatId, current);
+    nextCurrent = nextQuestionSameSection(chatId, current, state.wordCount);
   }
 
   if (!nextCurrent) {
@@ -363,37 +382,20 @@ export default {
 
     if (commandUsed === 'بدء') {
       ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {
+        step: 'target',
         timestamp: process.hrtime.bigint()
       });
       await ctx.reply('كم نقطة تريد أن تكون خط النهاية لكل قسم؟ أرسل رقماً.');
       return;
     }
 
-    // .بدا — random mode keeps its hidden per-section target, no question needed
-    const sections = SECTION_ORDER.slice();
-    const current = initSection(sections[0], ctx.chatId);
-
-    if (!current) {
-      await ctx.reply('فيه غلط');
+    if (commandUsed === 'بدا') {
+      ctx.store.namespace('tournamentPendingStart').set(ctx.chatId, {
+        step: 'wordCount',
+        mode: 'random',
+        timestamp: process.hrtime.bigint()
+      });
+      await ctx.reply('كم اسم بدك بقسم التفكيك والكت؟ أرسل رقماً.');
       return;
     }
-
-    const state = {
-      mode: 'random',
-      sections,
-      sectionIndex: 0,
-      sectionTarget: randomTarget(),
-      sectionScores: {},
-      scores: {},
-      current,
-      queue: Promise.resolve(),
-      isTransitioning: false
-    };
-
-    store.set(ctx.chatId, state);
-
-    await ctx.reply(`القسم الأول: ${SECTION_LABELS[sections[0]]}`);
-    const content = buildSendContent(current, '', []);
-    await ctx.sock.sendMessage(ctx.chatId, content, { quoted: ctx.msg });
-  }
 };
