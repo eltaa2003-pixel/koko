@@ -3,7 +3,7 @@ import { stopAllGamesWithReport } from '../lib/games.js';
 
 export default {
   name: 'c',
-  description: 'مالك البوت فقط — يقفل كل الألعاب بهاد الكروب (الملصقات بتضل شغالة)',
+  description: 'بابا فينننن',
   cooldown: 0,
 
   async execute(ctx) {
