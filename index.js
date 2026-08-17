@@ -17,8 +17,11 @@ import { checkCooldown } from './lib/cooldown.js';
 import { getMessageText } from './lib/messageText.js';
 import { useMongoAuthState } from './lib/mongoAuth.js';
 import { seedFromFileIfNeeded } from './lib/gameData.js';
+import { getGateStatus } from './lib/groupGate.js';
 
 import { PREFIX, DEFAULT_COOLDOWN } from './config.js';
+
+const OWNER_ONLY_COMMANDS = new Set(['o', 'c']);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -110,7 +113,7 @@ async function start() {
 }
 
 async function handleMessage(sock, msg, commands) {
-  if (!msg.message || msg.key.fromMe) return;
+  if (!msg.message) return;
 
   const chatId = msg.key.remoteJid;
   if (!chatId || chatId === 'status@broadcast') return;
@@ -121,8 +124,12 @@ async function handleMessage(sock, msg, commands) {
   const [commandRaw, ...args] = text.slice(PREFIX.length).trim().split(/\s+/);
   const command = commandRaw.toLowerCase();
 
+  if (msg.key.fromMe && !OWNER_ONLY_COMMANDS.has(command)) return;
+
   const plugin = commands.get(command);
   if (!plugin) return;
+
+  if (!msg.key.fromMe && OWNER_ONLY_COMMANDS.has(command)) return;
 
   const sender = msg.key.participant || msg.key.remoteJid;
   const reply = (replyText) => sock.sendMessage(chatId, { text: replyText }, { quoted: msg });
@@ -146,6 +153,11 @@ async function handleMessage(sock, msg, commands) {
     commands,
     reply
   };
+
+  if (plugin.gated && ctx.isGroup) {
+    const status = await getGateStatus(chatId);
+    if (status === 'closed') return;
+  }
 
   try {
     await plugin.execute(ctx);

@@ -265,6 +265,7 @@ export default {
   aliases: ['ستع', 'ضفتع'],
   description: 'طور تع الثلاثي التراكمي الفردي فائق السرعة بنظام احتساب kat المستمر',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

@@ -279,6 +279,7 @@ export default {
   aliases: ['سس', 'ضفسس'],
   description: 'لعبة سس: تخمين إجابة واحدة صحيحة لكل سؤال',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

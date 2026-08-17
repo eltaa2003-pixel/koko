@@ -179,6 +179,7 @@ export default {
   aliases: ['ستف', 'تفكيك'],
   description: 'تفكيك: نفس بنك كلمات كت، بس لازم تكتب الكلمة مفكوكة حرف حرف مفصول بمسافة',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

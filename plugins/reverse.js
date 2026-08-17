@@ -175,6 +175,7 @@ export default {
   aliases: ['سعكس'],
   description: 'معكس: نفس بنك كلمات كت، بس لازم تكتب الكلمة معكوسة',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

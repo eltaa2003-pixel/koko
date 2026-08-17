@@ -231,7 +231,8 @@ export default {
   name: 'مكت',
   aliases: ['سكت'],
   description: 'Fast-paced word matching game for كت/تفكيك',
-  cooldown: 0, 
+  cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

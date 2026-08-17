@@ -194,6 +194,7 @@ export default {
   aliases: ['سص', 'ص'],
   description: 'لعبة تخمين الصور: .مص يبدأ، سص يوقف، ص يرسل صورة عشوائية بدون نقاط',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     const commandUsed = ctx.command.toLowerCase();

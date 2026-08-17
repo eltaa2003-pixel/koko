@@ -165,6 +165,7 @@ export default {
   aliases: ['سعكستف'],
   description: 'معكستف: نفس تفكيك، بس لازم تكتب الحروف معكوسة',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);

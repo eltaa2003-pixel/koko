@@ -342,6 +342,7 @@ export default {
   aliases: ['بدء', 'بدا', 'سبطولة'],
   description: 'المفروض اكتب شي هنا بس مهتم',
   cooldown: 0,
+  gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);
