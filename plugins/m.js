@@ -13,8 +13,15 @@ const execFilePromise = util.promisify(execFile);
 
 // FFmpeg's own webp demuxer can't read the ANIM/ANMF chunks that make up an
 // animated webp — it only handles single-frame webp. node-webpmux actually
-// understands the animation container, so we use it to pull out each frame
-// as its own (static) webp image, then hand FFmpeg a plain image sequence.
+// understands the animation container, so we use its own demux() to pull
+// each frame out as a proper standalone webp buffer, then hand FFmpeg a
+// plain image sequence.
+//
+// NOTE: img.frames[i] holds the raw internal frame record (offsets, dispose/
+// blend flags, etc.) — there's no `.data`/`.imgData`/`.imageData` on it with
+// a ready-to-use image buffer. To get an actual decodable webp per frame you
+// have to go through img.demux({ buffers: true }), which reassembles each
+// frame into a standalone webp buffer for you.
 async function animatedWebpToMp4(buffer, outPath) {
   const img = new Image();
   await img.load(buffer);
@@ -23,21 +30,20 @@ async function animatedWebpToMp4(buffer, outPath) {
     throw new Error('no frames found in animated webp');
   }
 
+  const frameBuffers = await img.demux({ buffers: true });
+  if (!frameBuffers || frameBuffers.length === 0) {
+    throw new Error('demux produced no frame buffers');
+  }
+
   const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wa-frames-'));
 
   try {
     const avgDelayMs = img.frames.reduce((sum, f) => sum + (f.delay || 100), 0) / img.frames.length;
     const fps = Math.max(1, Math.round(1000 / avgDelayMs));
 
-    for (let i = 0; i < img.frames.length; i++) {
-      const frame = img.frames[i];
-      // NOTE: depending on the node-webpmux version, the raw frame bytes may
-      // be under `.data`, `.imgData`, or similar — log a frame object once
-      // (console.log(img.frames[0])) if this throws, and adjust the property
-      // name below to match what's actually there.
-      const frameBuffer = frame.data || frame.imgData || frame.imageData;
+    for (let i = 0; i < frameBuffers.length; i++) {
       const framePath = path.join(tmpDir, `frame_${String(i).padStart(4, '0')}.webp`);
-      await fsp.writeFile(framePath, frameBuffer);
+      await fsp.writeFile(framePath, frameBuffers[i]);
     }
 
     await execFilePromise(ffmpegPath, [
