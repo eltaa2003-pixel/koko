@@ -399,4 +399,5 @@ export default {
       await ctx.reply('كم اسم بدك بقسم التفكيك والكت؟ أرسل رقماً.');
       return;
     }
+  }
 };
