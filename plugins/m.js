@@ -77,40 +77,50 @@ export default {
     const quotedMessage = msg.message.extendedTextMessage.contextInfo.quotedMessage;
     if (!quotedMessage.stickerMessage) return reply('الرجاء الرد على ملصق فقط.');
 
-    const stickerMessage = quotedMessage.stickerMessage;
-    const isAnimated = stickerMessage.isAnimated || false;
+      const stickerMessage = quotedMessage.stickerMessage;
 
-    await sock.sendMessage(chatId, { react: { text: '⏳', key: msg.key } }).catch(() => {});
+     await sock.sendMessage(chatId, { react: { text: '⏳', key: msg.key } }).catch(() => {});
 
-    let webpPath, outPath;
+     let webpPath, outPath;
 
-    try {
-      const targetMsg = {
-        key: {
-          remoteJid: msg.key.remoteJid,
-          id: msg.message.extendedTextMessage.contextInfo.stanzaId,
-          participant: msg.message.extendedTextMessage.contextInfo.participant
-        },
-        message: quotedMessage
-      };
+     try {
+       const targetMsg = {
+         key: {
+           remoteJid: msg.key.remoteJid,
+           id: msg.message.extendedTextMessage.contextInfo.stanzaId,
+           participant: msg.message.extendedTextMessage.contextInfo.participant
+         },
+         message: quotedMessage
+       };
 
-      const mediaBuffer = await downloadMediaMessage(targetMsg, 'buffer', {}, { logger: sock.logger });
+       const mediaBuffer = await downloadMediaMessage(targetMsg, 'buffer', {}, { logger: sock.logger });
 
-      const tempId = randomBytes(4).toString('hex');
-      webpPath = `./temp_${tempId}.webp`;
-      outPath = `./temp_${tempId}.${isAnimated ? 'mp4' : 'png'}`;
+       const tempId = randomBytes(4).toString('hex');
+       webpPath = `./temp_${tempId}.webp`;
+       writeFileSync(webpPath, mediaBuffer);
 
-      writeFileSync(webpPath, mediaBuffer);
+       let isAnimated = stickerMessage.isAnimated || false;
+       if (!isAnimated) {
+         try {
+           const img = new Image();
+           await img.load(mediaBuffer);
+           if (img.frames && img.frames.length > 1) {
+             isAnimated = true;
+           }
+         } catch {}
+       }
 
-      if (isAnimated) {
-        await animatedWebpToMp4(mediaBuffer, outPath);
-        const videoBuffer = readFileSync(outPath);
-        await sock.sendMessage(chatId, { video: videoBuffer, caption: 'تم التحويل ✅' }, { quoted: msg });
-      } else {
-        await execFilePromise(ffmpegPath, ['-i', webpPath, outPath]);
-        const imageBuffer = readFileSync(outPath);
-        await sock.sendMessage(chatId, { image: imageBuffer, caption: 'تم التحويل ✅' }, { quoted: msg });
-      }
+       outPath = `./temp_${tempId}.${isAnimated ? 'mp4' : 'png'}`;
+
+       if (isAnimated) {
+         await animatedWebpToMp4(mediaBuffer, outPath);
+         const videoBuffer = readFileSync(outPath);
+         await sock.sendMessage(chatId, { video: videoBuffer, caption: 'تم الدهس' }, { quoted: msg });
+       } else {
+         await execFilePromise(ffmpegPath, ['-i', webpPath, outPath]);
+         const imageBuffer = readFileSync(outPath);
+         await sock.sendMessage(chatId, { image: imageBuffer, caption: 'تم الدهس' }, { quoted: msg });
+       }
 
       if (existsSync(webpPath)) unlinkSync(webpPath);
       if (existsSync(outPath)) unlinkSync(outPath);
