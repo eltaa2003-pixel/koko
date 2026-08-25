@@ -262,13 +262,24 @@ async function processMessage(ctx, chatId, state, m) {
 
 export default {
   name: 'متع',
-  aliases: ['ستع', 'ضفتع'],
+  aliases: ['ستع', 'ضفتع', 'cancel'],
   description: 'طور تع الثلاثي التراكمي الفردي فائق السرعة بنظام احتساب kat المستمر',
   cooldown: 0,
   gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);
+
+    if (ctx.command.toLowerCase() === 'cancel') {
+      const pendingStore = ctx.store.namespace('ta3PendingAdd');
+      if (pendingStore.has(ctx.sender)) {
+        pendingStore.delete(ctx.sender);
+        await ctx.reply('تم إلغاء الإضافة.');
+      } else {
+        await ctx.reply('لا توجد عملية إضافة لإلغائها.');
+      }
+      return;
+    }
 
     const store = ctx.store.namespace('ta3Game');
     const commandUsed = ctx.command.toLowerCase();

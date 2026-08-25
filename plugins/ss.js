@@ -276,13 +276,24 @@ async function processMessage(ctx, chatId, state, m) {
 
 export default {
   name: 'مس',
-  aliases: ['سس', 'ضفسس'],
+  aliases: ['سس', 'ضفسس', 'cancel'],
   description: 'لعبة سس: تخمين إجابة واحدة صحيحة لكل سؤال',
   cooldown: 0,
   gated: true, // owner .o/.c gate — see lib/groupGate.js
 
   async execute(ctx) {
     ensureGlobalListener(ctx);
+
+    if (ctx.command.toLowerCase() === 'cancel') {
+      const pendingStore = ctx.store.namespace('ssPendingAdd');
+      if (pendingStore.has(ctx.sender)) {
+        pendingStore.delete(ctx.sender);
+        await ctx.reply('تم إلغاء الإضافة.');
+      } else {
+        await ctx.reply('لا توجد عملية إضافة لإلغائها.');
+      }
+      return;
+    }
 
     const store = ctx.store.namespace('ssGame');
     const commandUsed = ctx.command.toLowerCase();
