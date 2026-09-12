@@ -76,7 +76,30 @@ async function imageToWebp(inputPath, outputPath) {
   ]);
 }
 
-async function videoToAnimatedWebp(inputPath, outputPath) {
+// WhatsApp treats an animated sticker over ~500KB (hard cap ~1MB) as a
+// plain file attachment instead of a sticker — that's the "shows a download
+// bubble and won't play" symptom. A single fixed quality setting can't
+// guarantee that across clips of different length/motion, so we encode at
+// progressively cheaper settings (lower fps, lower quality, smaller frame)
+// until the output actually fits, instead of hoping one setting is enough.
+const ANIMATED_SIZE_LIMIT = 500 * 1024; // target under WhatsApp's real cutoff
+// Ordered to protect text/detail sharpness as long as possible: dropping
+// frame count (fps) shrinks file size a lot without touching per-frame
+// quality, so we exhaust that lever first. Quality and canvas size — the
+// two settings that actually blur text — only drop once fps alone can't
+// get us under the limit.
+const ENCODE_LADDER = [
+  { fps: 15, quality: 80, size: 512 },
+  { fps: 12, quality: 80, size: 512 },
+  { fps: 10, quality: 75, size: 512 },
+  { fps: 8,  quality: 70, size: 512 },
+  { fps: 6,  quality: 65, size: 512 },
+  { fps: 6,  quality: 55, size: 448 },
+  { fps: 5,  quality: 45, size: 384 },
+  { fps: 5,  quality: 35, size: 320 },
+];
+
+async function encodeAnimatedWebpAttempt(inputPath, outputPath, { fps, quality, size }) {
   await execFilePromise(ffmpegPath, [
     '-y', '-i', inputPath,
     // format=rgba before palettegen gives every pixel clean binary alpha
@@ -86,9 +109,9 @@ async function videoToAnimatedWebp(inputPath, outputPath) {
     // of quantizing it to a random (often black) palette color. This is the
     // fix for the black rim on animated stickers.
     '-vf',
-      "scale='min(512,iw)':'min(512,ih)':force_original_aspect_ratio=decrease:flags=lanczos," +
-      "fps=15," +
-      "pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000," +
+      `scale='min(${size},iw)':'min(${size},ih)':force_original_aspect_ratio=decrease:flags=lanczos,` +
+      `fps=${fps},` +
+      `pad=${size}:${size}:(ow-iw)/2:(oh-ih)/2:color=0x00000000,` +
       "format=rgba," +
       "split [a][b]; " +
       "[a] palettegen=reserve_transparent=on:transparency_color=000000 [p]; " +
@@ -97,10 +120,23 @@ async function videoToAnimatedWebp(inputPath, outputPath) {
     '-loop', '0',
     '-preset', 'drawing',
     '-an',
-    '-q:v', '50',
+    '-q:v', String(quality),
     '-compression_level', '6',
     outputPath
   ]);
+}
+
+async function videoToAnimatedWebp(inputPath, outputPath) {
+  let lastSize = Infinity;
+  for (let i = 0; i < ENCODE_LADDER.length; i++) {
+    const settings = ENCODE_LADDER[i];
+    await encodeAnimatedWebpAttempt(inputPath, outputPath, settings);
+    const { size: bytes } = await fsp.stat(outputPath);
+    lastSize = bytes;
+    console.log(`[sticker] attempt ${i + 1} (fps=${settings.fps} q=${settings.quality} px=${settings.size}): ${(bytes / 1024).toFixed(1)} KB`);
+    if (bytes <= ANIMATED_SIZE_LIMIT) return;
+  }
+  console.warn(`[sticker] exhausted encode ladder, still ${(lastSize / 1024).toFixed(1)} KB — WhatsApp may reject this as a plain attachment. Try a shorter clip.`);
 }
 
 // Map a document's mimetype so files sent as attachments (.webp/.mp4/.gif
@@ -206,12 +242,6 @@ export default {
         await fsp.writeFile(inputPath, mediaBuffer);
         await videoToAnimatedWebp(inputPath, outputPath);
         const rawWebp = await fsp.readFile(outputPath);
-
-        console.log(`[sticker] animated webp size: ${(rawWebp.length / 1024).toFixed(1)} KB`);
-        if (rawWebp.length > 1_000_000) {
-          console.warn('[sticker] still over ~1MB — WhatsApp may show this as a plain attachment instead of a sticker. Consider a shorter clip or lower fps/quality.');
-        }
-
         finalStickerBuffer = await addStickerExif(rawWebp, customPackName, customAuthor);
       }
 
