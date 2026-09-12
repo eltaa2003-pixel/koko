@@ -7,9 +7,53 @@ import path from 'node:path';
 import os from 'node:os';
 import ffmpegPath from 'ffmpeg-static';
 import webpmuxPkg from 'node-webpmux';
+import fetch from 'node-fetch';
+import { FormData, Blob } from 'formdata-node';
+import { fileTypeFromBuffer } from 'file-type';
 
 const { Image } = webpmuxPkg;
 const execFilePromise = util.promisify(execFile);
+
+// ---------------------------------------------------------------------
+// Remote-first path: uploads the media to a public host (catbox.moe) then
+// asks a third-party conversion API to build the animated webp, instead of
+// doing it locally. NOTE: this means the media is briefly hosted at a
+// public URL anyone could access — that's a deliberate, known tradeoff (see
+// conversation), not an oversight. A short timeout + local ladder fallback
+// means a dead/slow remote service degrades gracefully instead of hanging
+// the whole command.
+// ---------------------------------------------------------------------
+const REMOTE_TIMEOUT_MS = 12_000;
+
+async function uploadToCatbox(buffer) {
+  const { ext, mime } = await fileTypeFromBuffer(buffer) || {};
+  const form = new FormData();
+  const blob = new Blob([buffer], { type: mime || 'application/octet-stream' });
+  form.append('fileToUpload', blob, `tmp.${ext || 'bin'}`);
+  form.append('reqtype', 'fileupload');
+  const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: form });
+  const result = await res.text();
+  if (!result.startsWith('https://files.catbox.moe/')) throw new Error('catbox upload failed');
+  return result.trim();
+}
+
+async function tryRemoteSticker(mediaBuffer, packname, author) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+  try {
+    const url = await uploadToCatbox(mediaBuffer);
+    const qs = new URLSearchParams({ url, packname, author });
+    const res = await fetch(`https://api.xteam.xyz/sticker/wm?${qs}`, { signal: controller.signal });
+    if (!res.ok) throw new Error(`remote API status ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Sanity-check we actually got a webp back and not an HTML error page.
+    const type = await fileTypeFromBuffer(buf);
+    if (!type || type.ext !== 'webp') throw new Error('remote API did not return a webp');
+    return buf;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ---------------------------------------------------------------------
 // Robust download: WhatsApp sometimes hasn't fully propagated a video's
@@ -83,20 +127,20 @@ async function imageToWebp(inputPath, outputPath) {
 // progressively cheaper settings (lower fps, lower quality, smaller frame)
 // until the output actually fits, instead of hoping one setting is enough.
 const ANIMATED_SIZE_LIMIT = 500 * 1024; // target under WhatsApp's real cutoff
-// Ordered to protect text/detail sharpness as long as possible: dropping
-// frame count (fps) shrinks file size a lot without touching per-frame
-// quality, so we exhaust that lever first. Quality and canvas size — the
-// two settings that actually blur text — only drop once fps alone can't
-// get us under the limit.
+// Holds fps close to 30 across every rung per your request — quality and
+// canvas size absorb the size reduction instead. Note the tradeoff: at 30fps
+// a 5s clip is 150 frames sharing the same ~500KB budget (vs. ~30 frames at
+// 6fps), so there's a lot less data per frame to work with, and detail/text
+// will degrade faster than it did when fps was the first thing to drop.
 const ENCODE_LADDER = [
-  { fps: 15, quality: 80, size: 512 },
-  { fps: 12, quality: 80, size: 512 },
-  { fps: 10, quality: 75, size: 512 },
-  { fps: 8,  quality: 70, size: 512 },
-  { fps: 6,  quality: 65, size: 512 },
-  { fps: 6,  quality: 55, size: 448 },
-  { fps: 5,  quality: 45, size: 384 },
-  { fps: 5,  quality: 35, size: 320 },
+  { fps: 30, quality: 70, size: 512 },
+  { fps: 30, quality: 55, size: 512 },
+  { fps: 30, quality: 40, size: 448 },
+  { fps: 30, quality: 30, size: 384 },
+  { fps: 24, quality: 30, size: 384 },
+  { fps: 24, quality: 25, size: 320 },
+  { fps: 20, quality: 25, size: 320 },
+  { fps: 20, quality: 20, size: 256 },
 ];
 
 async function encodeAnimatedWebpAttempt(inputPath, outputPath, { fps, quality, size }) {
@@ -237,11 +281,19 @@ export default {
         finalStickerBuffer = await addStickerExif(rawWebp, customPackName, customAuthor);
       } else {
         // videoMessage (native video, GIF, or a document-wrapped video/gif)
-        inputPath = path.join(os.tmpdir(), `sticker_in_${tempId}.mp4`);
-        outputPath = path.join(os.tmpdir(), `sticker_out_${tempId}.webp`);
-        await fsp.writeFile(inputPath, mediaBuffer);
-        await videoToAnimatedWebp(inputPath, outputPath);
-        const rawWebp = await fsp.readFile(outputPath);
+        let rawWebp;
+        try {
+          console.log('[sticker] trying remote API first...');
+          rawWebp = await tryRemoteSticker(mediaBuffer, customPackName, customAuthor);
+          console.log(`[sticker] remote API succeeded: ${(rawWebp.length / 1024).toFixed(1)} KB`);
+        } catch (remoteErr) {
+          console.warn('[sticker] remote API failed, falling back to local encode:', remoteErr.message);
+          inputPath = path.join(os.tmpdir(), `sticker_in_${tempId}.mp4`);
+          outputPath = path.join(os.tmpdir(), `sticker_out_${tempId}.webp`);
+          await fsp.writeFile(inputPath, mediaBuffer);
+          await videoToAnimatedWebp(inputPath, outputPath);
+          rawWebp = await fsp.readFile(outputPath);
+        }
         finalStickerBuffer = await addStickerExif(rawWebp, customPackName, customAuthor);
       }
 
